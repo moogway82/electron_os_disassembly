@@ -41,6 +41,280 @@ bufferSoundChannel3Size=16
 bufferSpeechAddress=$09c0
 bufferSpeechSize=64
 
+; ***************************************************************************************
+;
+; Zero Page Addresses ($00B0-$00FF)
+;
+; ***************************************************************************************
+fileWorkspaceA                             = $B0       ; }
+fileWorkspaceB                             = $B1       ; } workspace values are used while we
+fileWorkspaceC                             = $B2       ; } load or save to the tape or ROM
+fileWorkspaceD                             = $B3       ; } file system. They hold different
+fileWorkspaceE                             = $B4       ; } values when saving vs. loading.
+fileWorkspaceF                             = $B5       ; } See uses below.
+fileWorkspaceG                             = $B6       ; }
+fileWorkspaceH                             = $B7       ; }
+
+; when loading from tape or ROM we store the load address, current and next block numbers:
+loadAddressLow                             = .fileWorkspaceA ;
+loadAddressMid1                            = .fileWorkspaceB ;
+loadAddressMid2                            = .fileWorkspaceC ;
+loadAddressHigh                            = .fileWorkspaceD ;
+
+currentBlockNumberLow                      = .fileWorkspaceE ;
+currentBlockNumberHigh                     = .fileWorkspaceF ;
+
+nextBlockNumberLow                         = .fileWorkspaceG ;
+nextBlockNumberHigh                        = .fileWorkspaceH ;
+
+; when saving to tape we store the current start address and end address:
+tapeSaveStartAddressLow                    = .fileWorkspaceA ;
+tapeSaveStartAddressMid1                   = .fileWorkspaceB ;
+tapeSaveStartAddressMid2                   = .fileWorkspaceC ;
+tapeSaveStartAddressHigh                   = .fileWorkspaceD ;
+
+tapeSaveEndAddressLow                      = .fileWorkspaceE ;
+tapeSaveEndAddressMid1                     = .fileWorkspaceF ;
+tapeSaveEndAddressMid2                     = .fileWorkspaceG ;
+tapeSaveEndAddressHigh                     = .fileWorkspaceH ;
+
+
+printMessageAddressLow                     = $B8       ; } stores either the address of an
+printMessageAddressHigh                    = $B9       ; } error routine, or the return
+                                                        ; } address after printing a message.
+
+currentBlockHasDataErrorFlag               = $BA       ; set to $FF if the header of the
+                                                        ; current block was read OK, but there
+                                                        ; has been a data checksum error when
+                                                        ; reading the actual data from the
+                                                        ; current block. Otherwise $00.
+                                                        ; Used to know whether to display the
+                                                        ; 'Rewind tape' message.
+                                                        ; See .postFileError.
+tapeCurrentOptionsByte                     = $BB       ; current options for the tape
+                                                        ; filing system. See .tapeOptionsByte
+                                                        ; below.
+                                                        ;
+                                                        ; options are in the top four bits:
+                                                        ;   bit 4 = Abort bit
+                                                        ;   bit 5 = Retry bit
+                                                        ;   bit 6 }
+                                                        ;   bit 7 } Message type:
+                                                        ;
+                                                        ;       00 = no messages
+                                                        ;       10 = short messages
+                                                        ;       11 = long messages
+                                                        ;
+                                                        ; Bits   Errors     Message Type
+                                                        ; --------------------------------
+                                                        ; 0000   Ignore     no messages
+                                                        ; 0001   Abort      no messages
+                                                        ; 0010   Retry      no messages
+                                                        ; 1000   Ignore     short messages
+                                                        ; 1001   Abort      short messages
+                                                        ; 1010   Retry      short messages
+                                                        ; 1100   Ignore     long messages
+                                                        ; 1101   Abort      long messages
+                                                        ; 1110   Retry      long messages
+
+fsTempStorage                              = $BC       ; temporary storage used by filing
+                                                        ; system routines
+fsCharacterJustReadOrCharToWrite           = $BD       ;
+tapeChecksumLow                            = $BE       ; }
+tapeChecksumHigh                           = $BF       ; } CRC checksum
+fsGotACharacterToReadOrWriteFlag           = $C0       ; the top bit is set when a byte of
+                                                        ; data from tape or ROM has (a) been
+                                                        ; read or (b) is ready to write to
+                                                        ; tape, and is ready to be processed.
+                                                        ; The value of the byte is stored in
+                                                        ; .fsCharacterJustReadOrCharToWrite
+checksumIsValidFlag                        = $C1       ; non-zero value indicates an error
+fsReadProgressState                        = $C2       ; current state of reading from tape
+                                                        ; or ROM filing system (0-5)
+                                                        ; See .postReadByte
+tapeCurrentFileHandle                      = $C3       ; handle for currently open file
+tapeLastBputValue                          = $C4       ; Last byte BPUT, see .osbputEntryPoint
+
+unusedC5                                   = $C5       ; [unused]
+
+tapeBaudRate                               = $C6       ; current cassette baud rate:
+                                                        ; 5 for 1200 baud
+                                                        ; 6 for 300 baud
+tapeInterBlockGap                          = $C7       ; current duration (in tenths of a
+                                                        ; second) of the gap between blocks
+                                                        ; of data when saving to tape.
+osfileBlockAddressLow                      = $C8       ; } Address of parameter block for
+osfileBlockAddressHigh                     = $C9       ; } OSFILE
+tapeSendingFlag                            = $CA       ; non-zero = currently sending to tape
+tapeCRCBitCounter                          = $CB       ; loop counter when calculating CRC
+tapeFileLengthLow                          = $CC       ; } temporarily stores the file length
+tapeFileLengthHigh                         = $CD       ; } before writing it into the OSFILE
+                                                        ; } parameter block
+
+unusedCE                                   = $CE       ; [unused]
+unusedCF                                   = $CF       ; [unused]
+
+vduStatusByte                              = $D0       ; Each bit holds part the VDU status:
+                                                        ; bit 0 = printer enable
+                                                        ; bit 1 = scrolling disabled
+                                                        ; bit 2 = paged scrolling selected
+                                                        ; bit 3 = software scrolling (text window)
+                                                        ; bit 4 = not used
+                                                        ; bit 5 = graphics cursor enabled (VDU 5)
+                                                        ; bit 6 = separated cursors
+                                                        ; bit 7 = VDU disabled
+vduCurrentPlotByteMask                     = $D1       ; bits to write a pixel within a byte
+
+vduTextColourByteOR                        = $D2       ; } bytes to implement current foreground
+vduTextColourByteEOR                       = $D3       ; } and background text colours
+
+vduGraphicsColourByteOR                    = $D4       ; } bytes to implement current GCOL
+vduGraphicsColourByteEOR                   = $D5       ; } mode and graphics colours
+
+vduScreenAddressOfGraphicsCursorCellLow    = $D6       ; } address of the top of the cell
+vduScreenAddressOfGraphicsCursorCellHigh   = $D7       ; } on screen containing the graphics
+                                                        ; } cursor position
+
+vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
+vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
+
+vduTempStoreDA                             = $DA       ; }
+vduTempStoreDB                             = $DB       ; }
+vduTempStoreDC                             = $DC       ; } store for temporary values,
+vduTempStoreDD                             = $DD       ; } used in multiple VDU related
+vduTempStoreDE                             = $DE       ; } functions.
+vduTempStoreDF                             = $DF       ; }
+
+vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
+vduMultiplicationTableHigh                 = $E1       ; to use
+fsStatusByte                               = $E2       ; bit 0  input file open
+                                                        ; bit 1  output file open
+                                                        ; bit 2  not used
+                                                        ; bit 3  current CATalogue status
+                                                        ; bit 4  not used
+                                                        ; bit 5  not used
+                                                        ; bit 6  EOF reached
+                                                        ; bit 7  EOF warning given
+
+tapeOptionsByte                            = $E3       ; options for the tape filing
+                                                        ; system
+                                                        ;
+                                                        ; we store two sets of options, one
+                                                        ; for LOAD and SAVE operations on a
+                                                        ; whole file (top four bits), and
+                                                        ; the other for 'sequential access'
+                                                        ; byte by byte (lower four bits).
+                                                        ;
+                                                        ; Only one of these two sets of
+                                                        ; options is active at one time.
+                                                        ; These are stored in the top
+                                                        ; four bits of .tapeCurrentOptionsByte.
+                                                        ; See .tapeCurrentOptionsByte.
+                                                        ;
+                                                        ;   bit 0/4 = Abort bit
+                                                        ;   bit 1/5 = Retry bit
+                                                        ;   bit 2/6 }
+                                                        ;   bit 3/7 } Message type:
+                                                        ;
+                                                        ;       00 = no messages
+                                                        ;       10 = short messages
+                                                        ;       11 = long messages
+                                                        ;
+                                                        ; Bits   Errors     Message Type
+                                                        ; --------------------------------
+                                                        ; 0000   Ignore     no messages
+                                                        ; 0001   Abort      no messages
+                                                        ; 0010   Retry      no messages
+                                                        ; 1000   Ignore     short messages
+                                                        ; 1001   Abort      short messages
+                                                        ; 1010   Retry      short messages
+                                                        ; 1100   Ignore     long messages
+                                                        ; 1101   Abort      long messages
+                                                        ; 1110   Retry      long messages
+
+stringInputOptions                         = $E4       ; When parsing an input string
+                                                        ; bit 7 = double-quote character found at start
+                                                        ; bit 6 = space character is not a terminator
+                                                        ; See .gsinitEntryPoint
+starCommandYParameter                      = $E4
+stringInputPlingFlag                       = $E5       ; When parsing an input string
+                                                        ; $80 if previous character is '!'
+                                                        ; $00 otherwise
+starCommandXParameter                      = $E5
+readCharacterTimedFlag                     = $E6       ; 0 means read key instantly
+                                                        ; 255 means read key timed
+tempWorkspaceE6                            = $E6       ; general workspace
+currentStringPointer                       = $E6       ; offset within command string
+
+autorepeatCountdownTimer                   = $E7
+osword0BufferAddressLow                    = $E8       ; reading line of input by OSWORD 0
+osword0BufferAddressHigh                   = $E9       ;
+rs423TimeoutCounter                        = $EA       ;  1: the tape FS has control
+                                                        ;  0: RS-423 in control, timed out
+                                                        ; <0: RS-423 in control, not timed out
+tapeCritical                               = $EB       ; bit 7 set while doing a BGET/BPUT
+                                                        ;   (other bits are ignored)
+
+keyPressedInternalTable                    = $EC       ; start of two byte table of keys
+lastKeyPressedInternal                     = $EC       ; see table below
+firstKeyPressedInternal                    = $ED       ; see table below
+
+    ; Situation              .lastKeyPressedInternal    .firstKeyPressedInternal
+    ; -------------------------------------------------------------------------
+    ; no keys pressed        $00                        $00
+    ; one key pressed        first key number           $00
+    ; two keys pressed       second key  number         first key number
+    ; second key released    $00                        first key number
+
+keyToIgnoreWhenScanningWithOSBYTE121or122  = $EE       ; See .scanKeyboard
+
+osbyteA                                    = $EF       ; }
+oswordA                                    = $EF       ; } stores register values when
+osbyteX                                    = $F0       ; } calling OSBYTE and OSWORD
+oswordX                                    = $F0       ; }
+stackPointerLastBRK                        = $F0       ; stores the stack pointer on a BRK instruction
+osbyteY                                    = $F1       ; } stores register values when
+oswordY                                    = $F1       ; } calling OSBYTE and OSWORD
+
+stringInputBufferAddressLow                = $F2       ; } Start address of input string
+stringInputBufferAddressHigh               = $F3       ; }
+
+currentlySelectedROM                       = $F4       ; current Paged ROM selected
+currentSpeechPHROMOrROMNumber              = $F5       ; if bit 7 set:
+                                                        ;   ROM number for Speech PHROM ($F0-$FF)
+                                                        ; if bit 7 clear:
+                                                        ;   ROM number for current ROMFS ($00-$0F)
+
+romAddressLow                              = $F6       ;
+romAddressHigh                             = $F7       ;
+
+unusedF8                                   = $F8       ; [unused]
+unusedF9                                   = $F9       ; [unused]
+
+tempStoreFA                                = $FA       ; }
+tempStoreFB                                = $FB       ; } General purpose temporary store
+
+interruptAccumulator                       = $FC       ; used during IRQ processing to
+                                                        ; remember the accumulator and also
+                                                        ; used during a reset (before
+                                                        ; IRQs are enabled)
+
+languageVersionString                      = $FD       ; offset to language ROM version string
+                                                        ;                 (- multiple uses)
+displayStringAddressLow                    = $FD       ;                 (- multiple uses)
+brkAddressLow                              = $FD       ; } address after (- multiple uses)
+brkAddressHigh                             = $FE       ; } last BRK      (- multiple uses)
+displayStringAddressHigh                   = $FE       ;                 (- multiple uses)
+
+escapeFlag                                 = $FF       ; the ESCAPE flag
+                                                        ; this is set when an ESCAPE character
+                                                        ; (normally .charESCAPE) is entered
+                                                        ; into an input buffer.
+                                                        ; It should be acknowledged using
+                                                        ; OSBYTE 126. This tells the second
+                                                        ; processor of the event and clears
+                                                        ; the flag.
+
 ;-------------------------------------------------------------------------
 
                 .virtual $200
@@ -1745,7 +2019,7 @@ vduRoutinesTable: .macro lsb
                 .vduEntry LC48B,0,\lsb ; VDU 6
                 .vduEntry LE64B,0,\lsb ; VDU 7
                 .vduEntry LC53E,0,\lsb ; VDU 8
-                .vduEntry LC5E2,0,\lsb ; VDU 9
+                .vduEntry vdu9EntryPoint,0,\lsb ; VDU 9
                 .vduEntry vdu10EntryPoint,0,\lsb ; VDU 10
                 .vduEntry LC5D9,0,\lsb ; VDU 11
                 .vduEntry LC6F6,0,\lsb ; VDU 12
@@ -1975,11 +2249,19 @@ messageTURBO:
                 .cerror (>message64K)!=(>messageTURBO)
                 .endif
 
-LC433:
-                ldx $026A                    ; Jump if VDU queue not empty
-                bne LC48C
-                bit $D0                      ; Jump if cursors not seperated
-                bvc LC452
+; ***************************************************************************************
+;
+; VDUCHR entry point
+;
+; This is a limited version of OSWRCH that assumes output is to the display only, not to
+; Econet, the printer, RS-423, nor SPOOLed to a file. It assumes the VDU drivers are enabled.
+;
+; ***************************************************************************************
+vduChrEntryPoint:
+                ldx vduQueueNegativeLength                  ; Jump if VDU queue not empty
+                bne vduParametersAreOutstanding             ; if (parameters are still needed) then branch
+                bit vduStatusByte                           ; Jump if cursors not seperated
+                bvc LC452                                   ; if (cursor editing mode is NOT active) then branch forward
                 jsr LC4E2
                 jsr LCCC1                    ; Remove soft cursor
                 bmi LC452                    ; Skip past if VDU21 set
@@ -1996,8 +2278,8 @@ LC452:
                 bcc LC469
                 bit $D0
                 bmi LC464
-                jsr LCEDF
-                jsr LC5E2
+                jsr displayACharacter
+                jsr vdu9EntryPoint
 LC464:
                 jmp LC4D8
 
@@ -2028,7 +2310,7 @@ LC469:
 LC48B:
                 rts
 
-LC48C:
+vduParametersAreOutstanding:
                 sta $0224,x
                 inx
                 stx $026A
@@ -2243,7 +2525,7 @@ LC5D9:
 LC5DE:
                 ldx #$02                     ; C5DE= A2 02       ".
                 bne LC630                    ; C5E0= D0 4E       PN
-LC5E2:
+vdu9EntryPoint:
                 lda $D0                      ; C5E2= A5 D0       %P
                 and #$20                     ; C5E4= 29 20       )
                 bne LC62E                    ; C5E6= D0 46       PF
@@ -2748,7 +3030,7 @@ LC921:
                 bne LC921                    ; C926= D0 F9       Py
 LC928:
                 pla                          ; C928= 68          h
-                jsr LCF4F                    ; C929= 20 4F CF     OO
+                jsr getCharacterDefinitionAddress                    ; C929= 20 4F CF     OO
                 ldy #$07                     ; C92C= A0 07        .
 LC92E:
                 lda $031C,y                  ; C92E= B9 1C 03    9..
@@ -2975,7 +3257,7 @@ LCAAB:
 
 LCABC:
                 lda #$7F                     ; CABC= A9 7F       ).
-                jsr LCF4F                    ; CABE= 20 4F CF     OO
+                jsr getCharacterDefinitionAddress                    ; CABE= 20 4F CF     OO
                 ldx $035A                    ; CAC1= AE 5A 03    .Z.
                 ldy #$00                     ; CAC4= A0 00        .
                 jmp LCE94                    ; CAC6= 4C 94 CE    L.N
@@ -3252,7 +3534,7 @@ LCC3F:
                 rts                          ; CC3F= 60          `
 
 osword0A:
-                jsr LCF4F                    ; CC40= 20 4F CF     OO
+                jsr getCharacterDefinitionAddress                    ; CC40= 20 4F CF     OO
                 ldy #$00                     ; CC43= A0 00        .
 LCC45:
                 .if version==300
@@ -3676,10 +3958,10 @@ LCED5:
                 stx $DD
                 bne LCEE2
 
-LCEDF:
-                jsr LCF4F                    ; CEDF= 20 4F CF     OO
+displayACharacter:
+                jsr getCharacterDefinitionAddress                    ; CEDF= 20 4F CF     OO
 LCEE2:
-                ldx $0360                    ; CEE2= AE 60 03    .`.
+                ldx vv.numberOfLogicalColoursMinusOne                    ; CEE2= AE 60 03    .`.
                 lda $D0                      ; CEE5= A5 D0       %P
                 and #$20                     ; CEE7= 29 20       )
                 bne LCE8E                    ; CEE9= D0 A3       P#
@@ -3752,7 +4034,7 @@ LCF34:
                 adc #$08                     ; CF4A= 69 08       i.
                 tay                          ; CF4C= A8          (
                 bcc LCF34                    ; CF4D= 90 E5       .e
-LCF4F:
+getCharacterDefinitionAddress:
                 asl a                        ; CF4F= 0A          .
                 rol a                        ; CF50= 2A          *
                 rol a                        ; CF51= 2A          *
@@ -4896,7 +5178,7 @@ LD6D7:
 
 LD6D8:
                 jsr LD6DE                    ; D6D8= 20 DE D6     ^V
-                jsr LC433                    ; D6DB= 20 33 C4     3D
+                jsr vduChrEntryPoint         ; D6DB= 20 33 C4     3D
 
 ; Swap software cursor and screen data
 ; ------------------------------------
@@ -4969,7 +5251,7 @@ LD73A:
 LD746:
                 txa                          ; D746= 8A          .
                 pha                          ; D747= 48          H
-                jsr LCF4F                    ; D748= 20 4F CF     OO
+                jsr getCharacterDefinitionAddress                    ; D748= 20 4F CF     OO
                 pla                          ; D74B= 68          h
                 tax                          ; D74C= AA          *
 LD74D:
@@ -5086,7 +5368,7 @@ LD808:
                 jsr LC530                    ; D80A= 20 30 C5     0E
                 pla                          ; D80D= 68          h
                 and #$7F                     ; D80E= 29 7F       ).
-                jsr LC433                    ; D810= 20 33 C4     3D
+                jsr vduChrEntryPoint         ; D810= 20 33 C4     3D
                 lda #$40                     ; D813= A9 40       )@
                 jsr LC523                    ; D815= 20 23 C5     #E
                 jmp LD6DE                    ; D818= 4C DE D6    L^V
@@ -5100,7 +5382,7 @@ LD81B:
                 beq LD833                    ; D826= F0 0B       p.
                 pha                          ; D828= 48          H
                 jsr LD6DE                    ; D829= 20 DE D6     ^V
-                jsr LC5E2                    ; D82C= 20 E2 C5     bE
+                jsr vdu9EntryPoint           ; D82C= 20 E2 C5     bE
                 jsr LD6DE                    ; D82F= 20 DE D6     ^V
 LD832:
                 pla                          ; D832= 68          h
