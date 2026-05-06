@@ -2045,7 +2045,7 @@ vduRoutinesTable: .macro lsb
                 .vduEntry LCAAB,0,\lsb ; VDU 32
                 .endmacro
 
-LC32B: .vduRoutinesTable true
+vduEntryPointTableLow: .vduRoutinesTable true
 LC34C: .vduRoutinesTable false
 
 LC36D:
@@ -2262,8 +2262,10 @@ vduChrEntryPoint:
                 bne vduParametersAreOutstanding             ; if (parameters are still needed) then branch
                 bit vduStatusByte                           ; Jump if cursors not seperated
                 bvc LC452                                   ; if (cursor editing mode is NOT active) then branch forward
-                jsr LC4E2
-                jsr LCCC1                    ; Remove soft cursor
+
+                ; handle cursor editing mode...
+                jsr exchangeTextCursorAndInputCursorValues
+                jsr setUpWriteCursor                    ; Remove soft cursor
                 bmi LC452                    ; Skip past if VDU21 set
                 cmp #$0D                     ; Jump if not <CR>
                 bne LC452
@@ -2273,24 +2275,25 @@ vduChrEntryPoint:
                 lda #$0D                     ; Restore A=<CR>
 LC452:
                 cmp #$7F                     ; Jump with <DEL>
-                beq LC467
+                beq handleDeleteCharacter
                 cmp #$20                     ; Jump with control codes
-                bcc LC469
-                bit $D0
+                bcc readVDUEntryPointAddressAndParameters
+                bit vduStatusByte
                 bmi LC464
                 jsr displayACharacter
                 jsr vdu9EntryPoint
 LC464:
-                jmp LC4D8
+                jmp exitVDUCHR
 
 ; VDU Control codes
 ; -----------------
-LC467:
+handleDeleteCharacter:
                 lda #$20                     ; Offset=32 for <DEL>
-LC469:
+                
+readVDUEntryPointAddressAndParameters:
                 tay
-                lda LC32B,y                  ; get routine LSB
-                sta $035D                    ; store routine MSB
+                lda vduEntryPointTableLow,y                  ; get routine LSB
+                sta vv.jumpVector                    ; store routine MSB
                 lda LC34C,y                  ; get routine MSB
                 bmi LC4BF        ; branch taken if MSB usable directly
                 tax                          ; 
@@ -2304,7 +2307,7 @@ LC469:
                 clc
                 adc #vduRoutinesBasePage
                 sta $035E
-                bit $D0
+                bit vduStatusByte
                 bvs LC4A9
                 clc
 LC48B:
@@ -2315,7 +2318,7 @@ vduParametersAreOutstanding:
                 inx
                 stx $026A
                 bne LC4AC
-                bit $D0
+                bit vduStatusByte
                 bmi LC4AE
                 bvs LC4A0
                 jsr LD25F
@@ -2323,8 +2326,8 @@ vduParametersAreOutstanding:
                 rts
 
 LC4A0:
-                jsr LC4E2
-                jsr LCCC1
+                jsr exchangeTextCursorAndInputCursorValues
+                jsr setUpWriteCursor
                 jsr LD25F
 LC4A9:
                 jsr LC4DF
@@ -2338,7 +2341,7 @@ LC4AE:
                 bne LC4AC
 LC4B5:
                 tax
-                lda $D0
+                lda vduStatusByte
                 lsr a
                 bcc LC48B
                 txa
@@ -2353,28 +2356,28 @@ LC4BF:
                 cmp #$F2
                 eor #$FF
 LC4CD:
-                bit $D0
+                bit vduStatusByte
                 bmi LC4F7
                 php
                 jsr LD25F
                 plp
                 bcc LC4DB
-LC4D8:
-                lda $D0
+exitVDUCHR:
+                lda vduStatusByte
                 lsr a
 LC4DB:
-                bit $D0
+                bit vduStatusByte
                 bvc LC48B
 LC4DF:
-                jsr LCCC1
-LC4E2:
+                jsr setUpWriteCursor
+exchangeTextCursorAndInputCursorValues:
                 php
                 pha
                 ldx #$18
                 ldy #$64
                 jsr LCD1A
                 jsr LCE42
-                lda $D0
+                lda vduStatusByte
                 eor #$02
                 sta $D0
                 pla
@@ -2388,13 +2391,13 @@ LC4F7:
                 bcc LC530                    ; C4FD= 90 31       .1
 LC4FF:
                 bcc LC504                    ; C4FF= 90 03       ..
-                lda $D0                      ; C501= A5 D0       %P
+                lda vduStatusByte                      ; C501= A5 D0       %P
                 lsr a                        ; C503= 4A          J
 LC504:
                 rts                          ; C504= 60          `
 
 testVD5State:
-                lda $D0
+                lda vduStatusByte
                 and #$20
                 rts
 
@@ -2478,7 +2481,7 @@ LC588:
                 clc                          ; C588= 18          .
                 jsr LCC96                    ; C589= 20 96 CC     .L
                 lda #$08                     ; C58C= A9 08       ).
-                bit $D0                      ; C58E= 24 D0       $P
+                bit vduStatusByte                      ; C58E= 24 D0       $P
                 bne LC597                    ; C590= D0 05       P.
                 jsr LC9D1                    ; C592= 20 D1 C9     QI
                 bne LC59A                    ; C595= D0 03       P.
@@ -2526,7 +2529,7 @@ LC5DE:
                 ldx #$02                     ; C5DE= A2 02       ".
                 bne LC630                    ; C5E0= D0 4E       PN
 vdu9EntryPoint:
-                lda $D0                      ; C5E2= A5 D0       %P
+                lda vduStatusByte                      ; C5E2= A5 D0       %P
                 and #$20                     ; C5E4= 29 20       )
                 bne LC62E                    ; C5E6= D0 46       PF
                 ldx $0318                    ; C5E8= AE 18 03    ...
@@ -2554,7 +2557,7 @@ LC606:
 LC617:
                 jsr LCC96                    ; C617= 20 96 CC     .L
                 lda #$08                     ; C61A= A9 08       ).
-                bit $D0                      ; C61C= 24 D0       $P
+                bit vduStatusByte                      ; C61C= 24 D0       $P
                 bne LC625                    ; C61E= D0 05       P.
                 jsr LC9E1                    ; C620= 20 E1 C9     aI
                 bne LC628                    ; C623= D0 03       P.
@@ -2692,7 +2695,7 @@ LC6F5:
 LC6F6:
                 jsr testVD5State                    ; C6F6= 20 05 C5     .E
                 bne LC769                    ; C6F9= D0 6E       Pn
-                lda $D0                      ; C6FB= A5 D0       %P
+                lda vduStatusByte                      ; C6FB= A5 D0       %P
                 and #$08                     ; C6FD= 29 08       ).
                 bne LC704                    ; C6FF= D0 03       P.
                 jmp LCB9D                    ; C701= 4C 9D CB    L.K
@@ -3114,7 +3117,7 @@ LC9A4:
                 ora #$3F                     ; C9AD= 09 3F       .?
 LC9AF:
                 sta $FB                      ; C9AF= 85 FB       .{
-                lda $D0                      ; C9B1= A5 D0       %P
+                lda vduStatusByte                      ; C9B1= A5 D0       %P
                 and #$30                     ; C9B3= 29 30       )0
                 bne LC9D0                    ; C9B5= D0 19       P.
                 tax                          ; C9B7= AA          *
@@ -3279,7 +3282,7 @@ LCAD8:
                 bcc LCADF                    ; CADB= 90 02       ..
                 bmi LCAD5                    ; CADD= 30 F6       0v
 LCADF:
-                lda $D0                      ; CADF= A5 D0       %P
+                lda vduStatusByte                      ; CADF= A5 D0       %P
                 eor #$04                     ; CAE1= 49 04       I.
                 and #$46                     ; CAE3= 29 46       )F
                 bne LCB11                    ; CAE5= D0 2A       P*
@@ -3593,7 +3596,7 @@ LCC8B:
 
 LCC96:
                 lda #$02                     ; CC96= A9 02       ).
-                bit $D0                      ; CC98= 24 D0       $P
+                bit vduStatusByte                      ; CC98= 24 D0       $P
                 bne LCC9E                    ; CC9A= D0 02       P.
                 bvc LCCDC                    ; CC9C= 50 3E       P>
 LCC9E:
@@ -3620,7 +3623,7 @@ LCCBD:
                 inc $0365                    ; CCBD= EE 65 03    ne.
                 rts                          ; CCC0= 60          `
 
-LCCC1:
+setUpWriteCursor:
                 php                          ; CCC1= 08          .
                 pha                          ; CCC2= 48          H
                 ldy $034F                    ; CCC3= AC 4F 03    ,O.
@@ -3962,7 +3965,7 @@ displayACharacter:
                 jsr getCharacterDefinitionAddress                    ; CEDF= 20 4F CF     OO
 LCEE2:
                 ldx vv.numberOfLogicalColoursMinusOne                    ; CEE2= AE 60 03    .`.
-                lda $D0                      ; CEE5= A5 D0       %P
+                lda vduStatusByte                      ; CEE5= A5 D0       %P
                 and #$20                     ; CEE7= 29 20       )
                 bne LCE8E                    ; CEE9= D0 A3       P#
                 ldy #$07                     ; CEEB= A0 07        .
@@ -4329,7 +4332,7 @@ LD12B:
 LD135:
                 stx $DC                      ; D135= 86 DC       .\
                 lda LC411,x                  ; D137= BD 11 C4    =.D
-                sta $035D                    ; D13A= 8D 5D 03    .].
+                sta vv.jumpVector                    ; D13A= 8D 5D 03    .].
                 lda LC411+1,x                  ; D13D= BD 12 C4    =.D
                 sta $035E                    ; D140= 8D 5E 03    .^.
                 lda $0329,x                  ; D143= BD 29 03    =).
@@ -4492,7 +4495,7 @@ LD259:
                 bpl LD25F                    ; D25A= 10 03       ..
                 jsr LD2EA                    ; D25C= 20 EA D2     jR
 LD25F:
-                jmp ($035D)                  ; D25F= 6C 5D 03    l].
+                jmp (vv.jumpVector)                  ; D25F= 6C 5D 03    l].
 
 LD262:
                 iny                          ; D262= C8          H
@@ -4510,19 +4513,19 @@ LD262:
 LD27A:
                 sta $D5                      ; D27A= 85 D5       .U
                 ldy #$00                     ; D27C= A0 00        .
-                jmp ($035D)                  ; D27E= 6C 5D 03    l].
+                jmp (vv.jumpVector)                  ; D27E= 6C 5D 03    l].
 
 LD281:
                 lsr $D1                      ; D281= 46 D1       FQ
                 bcc LD25F                    ; D283= 90 DA       .Z
                 jsr LD304                    ; D285= 20 04 D3     .S
-                jmp ($035D)                  ; D288= 6C 5D 03    l].
+                jmp (vv.jumpVector)                  ; D288= 6C 5D 03    l].
                 
 LD28B:
                 asl $D1                      ; D28B= 06 D1       .Q
                 bcc LD25F                    ; D28D= 90 D0       .P
                 jsr LD314                    ; D28F= 20 14 D3     .S
-                jmp ($035D)                  ; D292= 6C 5D 03    l].
+                jmp (vv.jumpVector)                  ; D292= 6C 5D 03    l].
 
 LD295:
                 dey                          ; D295= 88          .
@@ -5186,7 +5189,7 @@ LD6DE:
                 php                          ; D6DE= 08          .
                 sei                          ; D6DF= 78          x
                 pha                          ; D6E0= 48          H
-                lda $D0                      ; D6E1= A5 D0       %P
+                lda vduStatusByte                      ; D6E1= A5 D0       %P
                 and #$30                     ; D6E3= 29 30       )0
                 bne LD70E                    ; No cursor displayed, exit
                 lda $0360                    ; D6E7= AD 60 03    -`.
@@ -5352,14 +5355,14 @@ LD7E5:
                 lda #$A0                     ; D7E6= A9 A0       )
                 ldx $026A                    ; D7E8= AE 6A 02    .j.
                 bne LD832                    ; D7EB= D0 45       PE
-                bit $D0                      ; D7ED= 24 D0       $P
+                bit vduStatusByte                      ; D7ED= 24 D0       $P
                 bne LD832                    ; D7EF= D0 41       PA
                 jsr LD6DE                    ; D7F1= 20 DE D6     ^V
                 bvs LD808                    ; D7F4= 70 12       p.
                 ldx #$18                     ; D7F6= A2 18       ".
                 ldy #$64                     ; D7F8= A0 64        d
                 jsr LD399                    ; D7FA= 20 99 D3     .S
-                jsr LCCC1                    ; D7FD= 20 C1 CC     AL
+                jsr setUpWriteCursor                    ; D7FD= 20 C1 CC     AL
                 lda #$02                     ; D800= A9 02       ).
                 jsr LC523                    ; D802= 20 23 C5     #E
                 asl $035F                    ; D805= 0E 5F 03    ._.
@@ -5375,7 +5378,7 @@ LD808:
 
 LD81B:
                 lda #$20                     ; D81B= A9 20       )
-                bit $D0                      ; D81D= 24 D0       $P
+                bit vduStatusByte                      ; D81D= 24 D0       $P
                 bvc LD7E2                    ; D81F= 50 C1       PA
                 bne LD7E2                    ; D821= D0 BF       P?
                 jsr osbyte87                    ; D823= 20 11 D7     .W
