@@ -14,31 +14,31 @@ fscStarCommand=8
 
 ;-------------------------------------------------------------------------
 
-bufferKeyboardAddress=$03e0
+; bufferKeyboardAddress=$03e0
 bufferKeyboardSize=32
 
-bufferRS423InputAddress=$0a00
+;bufferRS423InputAddress=$0a00
 bufferRS423InputSize=256
 
-bufferRS423OutputAddress=$0900
+;bufferRS423OutputAddress=$0900
 bufferRS423OutputSize=192
 
-bufferPrinterAddress=$0880
+;bufferPrinterAddress=$0880
 bufferPrinterSize=64
 
-bufferSoundChannel0Address=$0840
+;bufferSoundChannel0Address=$0840
 bufferSoundChannel0Size=16
 
-bufferSoundChannel1Address=$0850
+;bufferSoundChannel1Address=$0850
 bufferSoundChannel1Size=16
 
-bufferSoundChannel2Address=$0860
+;bufferSoundChannel2Address=$0860
 bufferSoundChannel2Size=16
 
-bufferSoundChannel3Address=$0870
+;bufferSoundChannel3Address=$0870
 bufferSoundChannel3Size=16
 
-bufferSpeechAddress=$09c0
+;bufferSpeechAddress=$09c0
 bufferSpeechSize=64
 
 ; Labels from:
@@ -8629,15 +8629,15 @@ bufferTableEntry: .macro address,size,table
                 .endmacro
 
 bufferTable: .macro table
-                .bufferTableEntry bufferKeyboardAddress,bufferKeyboardSize,\table
-                .bufferTableEntry bufferRS423InputAddress,bufferRS423InputSize,\table
-                .bufferTableEntry bufferRS423OutputAddress,bufferRS423OutputSize,\table
-                .bufferTableEntry bufferPrinterAddress,bufferPrinterSize,\table
-                .bufferTableEntry bufferSoundChannel0Address,bufferSoundChannel0Size,\table
-                .bufferTableEntry bufferSoundChannel1Address,bufferSoundChannel1Size,\table
-                .bufferTableEntry bufferSoundChannel2Address,bufferSoundChannel2Size,\table
-                .bufferTableEntry bufferSoundChannel3Address,bufferSoundChannel3Size,\table
-                .bufferTableEntry bufferSpeechAddress,bufferSpeechSize,\table
+                .bufferTableEntry keyboardInputBuffer,bufferKeyboardSize,\table
+                .bufferTableEntry tapeOrRS423InputBuffer,bufferRS423InputSize,\table
+                .bufferTableEntry tapeOrRS423OutputBuffer, bufferRS423OutputSize,\table
+                .bufferTableEntry printerBuffer, bufferPrinterSize,\table
+                .bufferTableEntry soundChannel0Buffer, bufferSoundChannel0Size,\table
+                .bufferTableEntry soundChannel1Buffer, bufferSoundChannel1Size,\table
+                .bufferTableEntry soundChannel2Buffer, bufferSoundChannel2Size,\table
+                .bufferTableEntry soundChannel3Buffer, bufferSoundChannel3Size,\table
+                .bufferTableEntry speechBuffer, bufferSpeechSize,\table
                 .endmacro
                 
 LE1A3: .bufferTable 0
