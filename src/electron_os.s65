@@ -41,7 +41,7 @@ bufferSoundChannel3Size=16
 ;bufferSpeechAddress=$09c0
 bufferSpeechSize=64
 
-; Labels from:
+; Symbols from:
 ; BBC Microcomputer OS 1.20
 ; Reassembly by Toby Nelson, 2020
 ; ***************************************************************************************
@@ -76,6 +76,8 @@ bufferSpeechSize=64
 ; See Chapter 3.
 
 ; ***************************************************************************************
+;
+; TODO: Convert this to ELK Hardware
 ;
 ; The Internal Hardware We Talk Directly To (via SHEILA)
 ;
@@ -1238,7 +1240,7 @@ countryCode                                = $0280     ; 0 = UK
 userFlag                                   = $0281     ; free for use by an application (not used by the OS)
                                                         ; (Read/Write with OSBYTE 241 but prefer using OSBYTE 1)
 
-serialULARegisterCopy                      = $0282     ; copy of the Serial ULA control register
+miscRegisterCopy               		       = $0282     ; RAM copy of ULA miscellaneous register.
                                                         ; (Read using OSBYTE 242)
 timeClockSwitch                            = $0283     ; which five byte clock is in currently use (5 or 10)
                                                         ; (Read using OSBYTE 243)
@@ -1396,7 +1398,7 @@ osfileLoadAddressLow                       = $02F0     ; the Load/Exec/Start/End
 osfileLoadAddressMid1                      = $02F1     ; are all 32 bit values. The upper
 osfileLoadAddressMid2                      = $02F2     ; two bytes are $FF $FF by default,
 osfileLoadAddressHigh                      = $02F3     ; meaning the code is for the main
-osfileExecAddressLow                       = $02F4     ; processor. If they have other
+internalCassetteFilingSystemVar            = $02F4     ; processor. If they have other
 osfileExecAddressMid1                      = $02F5     ; values the data is sent via the
 osfileExecAddressMid2                      = $02F6     ; Tube to the second processor
 osfileExecAddressHigh                      = $02F7     ; (if present).
@@ -2008,6 +2010,9 @@ romTitleString                             = $8009     ;
 ;
 ; ***************************************************************************************
 fredPage                                   = $FC00     ;
+LFC2C=$fc2c                                  ; Econet?
+LFCE0=$fce0                                  ; Tube
+LFCE5=$fce5                                  ; Tube
 
 ; ***************************************************************************************
 ;
@@ -2022,15 +2027,62 @@ fredPage                                   = $FC00     ;
 jimPage                                    = $FD00     ;
 jimPagedEntryPoint                         = $FDFE     ; at reset time, holds the address
                                                         ; to call to initialise JIM hardware
+                                                        ; 1 MHz bus hook                            
 
 ; ***************************************************************************************
 ;
 ; SHEILA
 ;
 ; ***************************************************************************************
-sheilaPage                                 = $FE00     ;
-crtcAddressRegister                        = $FE00     ;
-crtcAddressWrite                           = $FE01     ;
+                .virtual $fe00
+intStatusAndControlRegister: .block                                ; IRQ status
+masterIRQ=1
+powerOnReset=2
+displayEndIRQ=4
+rtcIRQ=8
+rxFullIRQ=16
+txEmptyIRQ=32
+highToneIRQ=64
+                .endblock
+                .endvirtual
+
+screenStartAddressRegisterLow               = $FE02                                  ; screen start LSB
+screenStartAddressRegisterHigh              = $FE03                                  ; screen start MSB
+cassetteDataShiftRegister                   = $FE04                                  ; tape data shift register
+
+                .virtual $fe05
+intClearAndPagingRegister: .block                                ; IRQ control+paging
+romMask=7
+romPageEnable=8
+clearDisplayEndIRQ=16
+clearRTCIRQ=32
+clearHighToneIRQ=64
+clearNMI=128
+                .endblock
+                .endvirtual
+
+theCounterRegister                          = $FE06                                  ; counter register
+
+
+                .virtual $fe07
+miscellaneousControlRegister: .block                                ; misc
+tapeInput=%00<<1
+sound=%01<<1
+tapeOutput=%10<<1
+unused=%11<<1
+commsModeMask=%11<<1
+displayModeShift=3
+displayModeMask=7<<displayModeShift
+tapeMotorOn=64
+capsLockLED=128
+                .endblock  
+                .endvirtual
+
+colourPaletteRegistersStart                 = $fe08                                  ; palette start
+
+; sheilaPage                                 = $FE00     ;
+; crtcAddressRegister                        = $FE00     ;
+; crtcAddressWrite                           = $FE01     ;
 
 ; ***************************************************************************************
 ;
@@ -2062,7 +2114,7 @@ crtcAddressWrite                           = $FE01     ;
 ;     RTS low is the active state ('Request To Send')
 ;
 ; ***************************************************************************************
-acia6850ControlRegister                    = $FE08     ;
+; acia6850ControlRegister                    = $FE08     ;
 
 ; ***************************************************************************************
 ;
@@ -2083,9 +2135,9 @@ acia6850ControlRegister                    = $FE08     ;
 ;     bit 7 - set if the 6850 generated the current interrupt
 ;
 ; ***************************************************************************************
-acia6850StatusRegister                     = $FE08     ;
+; acia6850StatusRegister                     = $FE08     ;
 
-acia6850DataRegister                       = $FE09     ; ACIA 6850, transmit / receive data register ('TDR'/'RDR')
+; acia6850DataRegister                       = $FE09     ; ACIA 6850, transmit / receive data register ('TDR'/'RDR')
 
 ; ***************************************************************************************
 ;
@@ -2107,7 +2159,7 @@ acia6850DataRegister                       = $FE09     ; ACIA 6850, transmit / r
 ;     bit 7 - if set, switch on the cassette motor and relay
 ;
 ; ***************************************************************************************
-serialULAControlRegister                   = $FE10     ; Serial ULA control register
+; serialULAControlRegister                   = $FE10     ; Serial ULA control register
 
 ; ***************************************************************************************
 ;
@@ -2133,7 +2185,7 @@ serialULAControlRegister                   = $FE10     ; Serial ULA control regi
 ;           %010  MODE 7
 ;
 ; ***************************************************************************************
-videoULAControlRegister                    = $FE20     ; Video ULA control register
+; videoULAControlRegister                    = $FE20     ; Video ULA control register
 
 ; ***************************************************************************************
 ;
@@ -2205,9 +2257,9 @@ videoULAControlRegister                    = $FE20     ; Video ULA control regis
 ;      value to write = physical colour from table above EOR 7.
 ;
 ; ***************************************************************************************
-videoULAPaletteRegister                    = $FE21     ; Video ULA palette register
+; videoULAPaletteRegister                    = $FE21     ; Video ULA palette register
 
-romSelectRegister                          = $FE30     ;
+; romSelectRegister                          = $FE30     ;
 
 
 ; ***************************************************************************************
@@ -2256,7 +2308,7 @@ romSelectRegister                          = $FE30     ;
 ; bit 4-5:  joystick buttons (bit is zero when button pressed)
 ;
 ; ***************************************************************************************
-systemVIARegisterB                         = $FE40     ; System VIA Register B (Input and Output)
+; systemVIARegisterB                         = $FE40     ; System VIA Register B (Input and Output)
 
 ; ***************************************************************************************
 ;
@@ -2265,7 +2317,7 @@ systemVIARegisterB                         = $FE40     ; System VIA Register B (
 ; This register is not used. The non-handshaking variant is used instead.
 ; See .systemVIADataDirectionRegisterA for details.
 ; ***************************************************************************************
-systemVIARegisterA                         = $FE41     ; System VIA Register A (Input and Output)
+; systemVIARegisterA                         = $FE41     ; System VIA Register A (Input and Output)
 
 ; ***************************************************************************************
 ;
@@ -2281,7 +2333,7 @@ systemVIARegisterA                         = $FE41     ; System VIA Register A (
 ; .systemVIARegisterB. See .systemVIARegisterB.
 ;
 ; ***************************************************************************************
-systemVIADataDirectionRegisterB            = $FE42     ; System VIA data direction register B (DDRB)
+; systemVIADataDirectionRegisterB            = $FE42     ; System VIA data direction register B (DDRB)
 
 ; ***************************************************************************************
 ;
@@ -2308,7 +2360,7 @@ systemVIADataDirectionRegisterB            = $FE42     ; System VIA data directi
 ;           (See .scanKeyboard)
 ;
 ; ***************************************************************************************
-systemVIADataDirectionRegisterA            = $FE43     ; System VIA data direction register A (DDRA)
+; systemVIADataDirectionRegisterA            = $FE43     ; System VIA data direction register A (DDRA)
 
 ; ***************************************************************************************
 ;
@@ -2339,10 +2391,10 @@ systemVIADataDirectionRegisterA            = $FE43     ; System VIA data directi
 ;   This is the mode set by the OS for Timer 1 at startup. See .setUpPage2.
 ;
 ; ***************************************************************************************
-systemVIATimer1CounterLow                  = $FE44     ;
-systemVIATimer1CounterHigh                 = $FE45     ;
-systemVIATimer1LatchLow                    = $FE46     ;
-systemVIATimer1LatchHigh                   = $FE47     ;
+; systemVIATimer1CounterLow                  = $FE44     ;
+; systemVIATimer1CounterHigh                 = $FE45     ;
+; systemVIATimer1LatchLow                    = $FE46     ;
+; systemVIATimer1LatchHigh                   = $FE47     ;
 
 ; ***************************************************************************************
 ;
@@ -2369,8 +2421,8 @@ systemVIATimer1LatchHigh                   = $FE47     ;
 ; is cleared by the OS when a Timer 2 IRQ is received (see .irq1CheckSystemVIASpeech).
 ; It is also cleared at startup. See .setUpPage2.
 ; ***************************************************************************************
-systemVIATimer2CounterLow                  = $FE48     ;
-systemVIATimer2CounterHigh                 = $FE49     ;
+; systemVIATimer2CounterLow                  = $FE48     ;
+; systemVIATimer2CounterHigh                 = $FE49     ;
 
 ; ***************************************************************************************
 ;
@@ -2381,7 +2433,7 @@ systemVIATimer2CounterHigh                 = $FE49     ;
 ; See NAUG Section 22.4.9, Page 395.
 ;
 ; ***************************************************************************************
-systemVIAShiftRegister                     = $FE4A     ;
+; systemVIAShiftRegister                     = $FE4A     ;
 
 ; ***************************************************************************************
 ;
@@ -2411,7 +2463,7 @@ systemVIAShiftRegister                     = $FE4A     ;
 ; See NAUG Section 22.4.8, Page 395.
 ;
 ; ***************************************************************************************
-systemVIAAuxiliaryControlRegister          = $FE4B     ;
+; systemVIAAuxiliaryControlRegister          = $FE4B     ;
 
 ; ***************************************************************************************
 ;
@@ -2449,7 +2501,7 @@ systemVIAAuxiliaryControlRegister          = $FE4B     ;
 ;       CB1 has negative active edge       (end of analogue conversion)
 ;       CB2 negative active edges on input (light pen strobe)
 ; ***************************************************************************************
-systemVIAPeripheralControlRegister         = $FE4C     ;
+; systemVIAPeripheralControlRegister         = $FE4C     ;
 
 ; ***************************************************************************************
 ;
@@ -2476,7 +2528,7 @@ systemVIAPeripheralControlRegister         = $FE4C     ;
 ; Clear bit 7 and set a bit 0-6 to clear that interrupt.
 ;
 ; ***************************************************************************************
-systemVIAInterruptFlagRegister             = $FE4D     ;
+; systemVIAInterruptFlagRegister             = $FE4D     ;
 
 ; ***************************************************************************************
 ;
@@ -2504,10 +2556,10 @@ systemVIAInterruptFlagRegister             = $FE4D     ;
 ; Bit 7 is always set when read.
 ;
 ; ***************************************************************************************
-systemVIAInterruptEnableRegister           = $FE4E     ;
+; systemVIAInterruptEnableRegister           = $FE4E     ;
 
 ; See .systemVIADataDirectionRegisterA.
-systemVIARegisterANoHandshake              = $FE4F     ; System VIA Register A without handshaking
+; systemVIARegisterANoHandshake              = $FE4F     ; System VIA Register A without handshaking
 
 ; ***************************************************************************************
 ;
@@ -2532,20 +2584,20 @@ systemVIARegisterANoHandshake              = $FE4F     ; System VIA Register A w
 ; The shift register is unused.
 ;
 ; ***************************************************************************************
-userVIARegisterB                           = $FE60     ; Register B (input/output)
-userVIARegisterA                           = $FE61     ; Register A (output)
-userVIADataDirectionRegisterB              = $FE62     ; data direction register B
-userVIADataDirectionRegisterA              = $FE63     ; data direction register A
+; userVIARegisterB                           = $FE60     ; Register B (input/output)
+; userVIARegisterA                           = $FE61     ; Register A (output)
+; userVIADataDirectionRegisterB              = $FE62     ; data direction register B
+; userVIADataDirectionRegisterA              = $FE63     ; data direction register A
 
-userVIATimer1CounterLow                    = $FE64     ; Timer 1 counter (low)
-userVIATimer1CounterHigh                   = $FE65     ; Timer 1 counter (high)
-userVIATimer1LatchLow                      = $FE66     ; Timer 1 latch (low)
-userVIATimer1LatchHigh                     = $FE67     ; Timer 1 latch (high)
-userVIATimer2CounterLow                    = $FE68     ; Timer 2 counter (low)
-userVIATimer2CounterHigh                   = $FE69     ; Timer 2 counter (high)
+; userVIATimer1CounterLow                    = $FE64     ; Timer 1 counter (low)
+; userVIATimer1CounterHigh                   = $FE65     ; Timer 1 counter (high)
+; userVIATimer1LatchLow                      = $FE66     ; Timer 1 latch (low)
+; userVIATimer1LatchHigh                     = $FE67     ; Timer 1 latch (high)
+; userVIATimer2CounterLow                    = $FE68     ; Timer 2 counter (low)
+; userVIATimer2CounterHigh                   = $FE69     ; Timer 2 counter (high)
 
-userVIAShiftRegister                       = $FE6A     ; shift register
-userVIAAuxiliaryControlRegister            = $FE6B     ; auxiliary control register
+; userVIAShiftRegister                       = $FE6A     ; shift register
+; userVIAAuxiliaryControlRegister            = $FE6B     ; auxiliary control register
 
 ; ***************************************************************************************
 ;
@@ -2559,7 +2611,7 @@ userVIAAuxiliaryControlRegister            = $FE6B     ; auxiliary control regis
 ;           CB1 interrupt on -ve edge     (user port)
 ;           CB2 negative edge             (user port)
 ; ***************************************************************************************
-userVIAPeripheralControlRegister           = $FE6C     ; Peripheral control register
+; userVIAPeripheralControlRegister           = $FE6C     ; Peripheral control register
 
 ; ***************************************************************************************
 ;
@@ -2582,7 +2634,7 @@ userVIAPeripheralControlRegister           = $FE6C     ; Peripheral control regi
 ; (See .irq1CheckUserVIA)
 ;
 ; ***************************************************************************************
-userVIAInterruptFlagRegister               = $FE6D     ; Interrupt flag register
+; userVIAInterruptFlagRegister               = $FE6D     ; Interrupt flag register
 
 ; ***************************************************************************************
 ;
@@ -2603,14 +2655,14 @@ userVIAInterruptFlagRegister               = $FE6D     ; Interrupt flag register
 ; bit 7 is always read as set when reading.
 ; (See .irq1CheckUserVIA)
 ; ***************************************************************************************
-userVIAInterruptEnableRegister             = $FE6E     ; Interrupt enable register
+; userVIAInterruptEnableRegister             = $FE6E     ; Interrupt enable register
 
 ; ***************************************************************************************
 ;
 ; User VIA, Register B no handshake ($FE6F)
 ;
 ; ***************************************************************************************
-userVIARegisterBNoHandshake                = $FE6F     ; Register B but no handshake
+; userVIARegisterBNoHandshake                = $FE6F     ; Register B but no handshake
 
 ; ***************************************************************************************
 ;
@@ -2619,12 +2671,12 @@ userVIARegisterBNoHandshake                = $FE6F     ; Register B but no hands
 ; See .osbyte17EntryPoint
 ;
 ; ***************************************************************************************
-adcDataStatusRegister                      = $FEC0     ; For reading the current ADC
+; adcDataStatusRegister                      = $FEC0     ; For reading the current ADC
                                                         ; conversion state
-adcStartConversionRegister                 = $FEC0     ; For writing when we want to start
+; adcStartConversionRegister                 = $FEC0     ; For writing when we want to start
                                                         ; an ADC conversion
-adcDataHighByte                            = $FEC1     ; ADC (7002) high data byte
-adcDataLowByte                             = $FEC2     ; ADC (7002) low data byte
+; adcDataHighByte                            = $FEC1     ; ADC (7002) high data byte
+; adcDataLowByte                             = $FEC2     ; ADC (7002) low data byte
 
 ; ***************************************************************************************
 ;
@@ -2633,74 +2685,14 @@ adcDataLowByte                             = $FEC2     ; ADC (7002) low data byt
 ; See NAUG Section 18.3, Page 328
 ;
 ; ***************************************************************************************
-tubeULAStatusRegister                      = $FEE0     ; Tube ULA Status Register
-tubeULADataRegister3                       = $FEE5     ;
+; tubeULAStatusRegister                      = $FEE0     ; Tube ULA Status Register
+; tubeULADataRegister3                       = $FEE5     ;
 
 
 ;-------------------------------------------------------------------------
 ;
 ; Electron memory-mapped I/O
 ;
-
-; 
-; FRED
-; 
-LFC00=$fc00
-LFC2C=$fc2c                                  ; Econet?
-LFCE0=$fce0                                  ; Tube
-LFCE5=$fce5                                  ; Tube
-
-;
-; JIM
-; 
-LFD00=$fd00
-LFDFE=$fdfe                                  ; 1 MHz bus hook
-
-; 
-; SHEILA
-; 
-                .virtual $fe00
-LFE00: .block                                ; IRQ status
-masterIRQ=1
-powerOnReset=2
-displayEndIRQ=4
-rtcIRQ=8
-rxFullIRQ=16
-txEmptyIRQ=32
-highToneIRQ=64
-                .endblock
-                .endvirtual
-LFE02=$fe02                                  ; screen start LSB
-LFE03=$fe03                                  ; screen start MSB
-LFE04=$fe04                                  ; tape data shift register
-                .virtual $fe05
-LFE05: .block                                ; IRQ control+paging
-romMask=7
-romPageEnable=8
-clearDisplayEndIRQ=16
-clearRTCIRQ=32
-clearHighToneIRQ=64
-clearNMI=128
-                .endblock
-                .endvirtual
-LFE06=$fe06                                  ; counter register
-                .virtual $fe07
-LFE07: .block                                ; misc
-tapeInput=%00<<1
-sound=%01<<1
-tapeOutput=%10<<1
-unused=%11<<1
-commsModeMask=%11<<1
-
-displayModeShift=3
-displayModeMask=7<<displayModeShift
-
-tapeMotorOn=64
-capsLockLED=128
-                .endblock
-                .endvirtual
-LFE08=$fe08                                  ; palette start
-
                 .if version==300
 
                 ; Slogger Electron Expansion ROM hook. See, e.g.,
@@ -3797,7 +3789,7 @@ vduRoutinesTable: .macro lsb
                 .vduEntry LC841,5,\lsb ; VDU 19
                 .vduEntry LC7F6,0,\lsb ; VDU 20
                 .vduEntry LC521,0,\lsb ; VDU 21
-                .vduEntry LC8EC,1,\lsb ; VDU 22
+                .vduEntry vdu22EntryPoint,1,\lsb ; VDU 22
                 .vduEntry LC8F2,9,\lsb ; VDU 23
                 .vduEntry LCA38,8,\lsb ; VDU 24
                 .vduEntry LC986,5,\lsb ; VDU 25
@@ -3811,9 +3803,9 @@ vduRoutinesTable: .macro lsb
                 .endmacro
 
 vduEntryPointTableLow: .vduRoutinesTable true
-LC34C: .vduRoutinesTable false
+vduEntryPointTableHigh: .vduRoutinesTable false
 
-LC36D:
+multiplyBy640Table:
                 .beword 0*640
                 .beword 1*640
                 .beword 2*640
@@ -4059,7 +4051,7 @@ readVDUEntryPointAddressAndParameters:
                 tay
                 lda vduEntryPointTableLow,y                  ; get routine LSB
                 sta vduJumpVectorLow                    ; store routine MSB
-                lda LC34C,y                  ; get routine MSB
+                lda vduEntryPointTableHigh,y                  ; get routine MSB
                 bmi LC4BF        ; branch taken if MSB usable directly
                 tax                          ; 
                 ora #$F0
@@ -4373,7 +4365,7 @@ LC66F:
                 jmp LC59F                    ; C671= 4C 9F C5    L.E
 
 LC674:
-                ldx $0355                    ; C674= AE 55 03    .U.
+                ldx vduCurrentScreenMODE                    ; C674= AE 55 03    .U.
                 lda $0321                    ; C677= AD 21 03    -!.
                 cmp $0323                    ; C67A= CD 23 03    M#.
                 bcc LC6F5                    ; C67D= 90 76       .v
@@ -4752,13 +4744,20 @@ LC8C5:
                 and #$30                     ; C8E3= 29 30       )0
                 bne LC8EB                    ; C8E5= D0 04       P.
                 txa                          ; C8E7= 8A          .
-                sta LFE08,y                  ; C8E8= 99 08 FE    ..~
+                sta colourPaletteRegistersStart,y                  ; C8E8= 99 08 FE    ..~
 LC8EB:
                 rts                          ; C8EB= 60          `
 
-LC8EC:
-                lda $0323                    ; C8EC= AD 23 03    -#.
-                jmp LCB30                    ; C8EF= 4C 30 CB    L0K
+; ***************************************************************************************
+;
+;   VDU 22      Select MODE
+;
+; ***************************************************************************************
+vdu22Parameter = vduQueueEndByte
+
+vdu22EntryPoint:
+                lda vduQueueEndByte                    ; C8EC= AD 23 03    -#.
+                jmp setMODE                    ; C8EF= 4C 30 CB    L0K
 
 LC8F2:
                 lda $031B                    ; C8F2= AD 1B 03    -..
@@ -4922,10 +4921,10 @@ LC9F0:
                 stx $0350                    ; C9F3= 8E 50 03    .P.
                 pha                          ; C9F6= 48          H
                 lsr a                        ; C9F7= 4A          J
-                sta LFE03                    ; C9F8= 8D 03 FE    ..~
+                sta screenStartAddressRegisterHigh                    ; C9F8= 8D 03 FE    ..~
                 txa                          ; C9FB= 8A          .
                 ror a                        ; C9FC= 6A          j
-                sta LFE02                    ; C9FD= 8D 02 FE    ..~
+                sta screenStartAddressRegisterLow                    ; C9FD= 8D 02 FE    ..~
                 pla                          ; CA00= 68          h
                 rts                          ; CA01= 60          `
 
@@ -4936,7 +4935,7 @@ LCA06:
                 sta $0300,x                  ; CA06= 9D 00 03    ...
                 dex                          ; CA09= CA          J
                 bpl LCA06                    ; CA0A= 10 FA       .z
-                ldx $0355                    ; CA0C= AE 55 03    .U.
+                ldx vduCurrentScreenMODE                    ; CA0C= AE 55 03    .U.
                 ldy LC3B4,x                  ; CA0F= BC B4 C3    <4C
                 sty $030A                    ; CA12= 8C 0A 03    ...
                 jsr LCA87                    ; CA15= 20 87 CA     .J
@@ -4969,7 +4968,7 @@ LCA38:
                 bmi LCA80                    ; CA57= 30 27       0'
                 lda $0323                    ; CA59= AD 23 03    -#.
                 bne LCA80                    ; CA5C= D0 22       P"
-                ldx $0355                    ; CA5E= AE 55 03    .U.
+                ldx vduCurrentScreenMODE                    ; CA5E= AE 55 03    .U.
                 lda $0321                    ; CA61= AD 21 03    -!.
                 sta $D8                      ; CA64= 85 D8       .X
                 lda $0320                    ; CA66= AD 20 03    - .
@@ -5094,28 +5093,38 @@ LCB21:
                 pla                          ; CB2A= 68          h
                 ldx #$7F                     ; CB2B= A2 7F       ".
                 stx $0366                    ; CB2D= 8E 66 03    .f.
-LCB30:
+
+; ***************************************************************************************
+;
+; Set MODE
+;
+; On Entry:
+;       A = screen MODE number
+;
+; ***************************************************************************************
+setMODE:
                 .if version==300
                 jsr getNormalisedMODE
                 php
                 sei
-                sta $0355
-                lda $0282
+                sta vduCurrentScreenMODE
+                lda miscRegisterCopy
                 and #$C7
-                ora $0355
+                ora vduCurrentScreenMODE
                 jsr LE495
-                stx $0355
+                stx vduCurrentScreenMODE
                 .else
+
                 jsr getNormalisedMODE                    ; CB30= 20 DA DA     ZZ
-                stx $0355                    ; CB33= 8E 55 03    .U.
+                stx vduCurrentScreenMODE                    ; CB33= 8E 55 03    .U.
                 php                          ; CB36= 08          .
                 sei                          ; CB37= 78          x
-                sta $02F4                    ; CB38= 8D F4 02    .t.
-                lda $0282                    ; CB3B= AD 82 02    -..
-                and #~(7<<LFE07.displayModeShift)&$ff
-                ora $02F4                    ; CB40= 0D F4 02    .t.
-                sta $0282                    ; CB43= 8D 82 02    ...
-                sta LFE07                    ; CB46= 8D 07 FE    ..~
+                sta internalCassetteFilingSystemVar                    ; CB38= 8D F4 02    .t.
+                lda miscRegisterCopy                    ; CB3B= AD 82 02    -..
+                and #~(7<<miscellaneousControlRegister.displayModeShift)&$ff
+                ora internalCassetteFilingSystemVar                    ; CB40= 0D F4 02    .t.
+                sta miscRegisterCopy                    ; CB43= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; CB46= 8D 07 FE    ..~
                 .endif
                 plp                          ; CB49= 28          (
                 lda LC3CF,x                  ; CB4A= BD CF C3    =OC
@@ -5251,7 +5260,7 @@ LCBEA:
                 ldy #$07                     ; CBF6= A0 07        .
 LCBF8:
                 lda $0804,y                  ; CBF8= B9 04 08    9..
-                sta LFE08,y                  ; CBFB= 99 08 FE    ..~
+                sta colourPaletteRegistersStart,y                  ; CBFB= 99 08 FE    ..~
                 dey                          ; CBFE= 88          .
                 bpl LCBF8                    ; CBFF= 10 F7       .w
 LCC01:
@@ -5266,7 +5275,7 @@ LCC03:
 ; --------------------------------
 osbyte73:
                 beq LCBE8                    ; X=0 - Restore palette
-                lda $0355                    ; Get current MODE
+                lda vduCurrentScreenMODE                    ; Get current MODE
                 and #$04                     ; MODE 4-7 - exit
                 bne LCC3F
                 lda #$10                     ;
@@ -5294,7 +5303,7 @@ LCC32:
                 tax                          ; CC34= AA          *
                 lda LC423,x                  ; CC35= BD 23 C4    =#D
 LCC38:
-                sta LFE08,y                  ; CC38= 99 08 FE    ..~
+                sta colourPaletteRegistersStart,y                  ; CC38= 99 08 FE    ..~
                 dey                          ; CC3B= 88          .
                 dey                          ; CC3C= 88          .
                 bpl LCC38                    ; CC3D= 10 F9       .y
@@ -5631,9 +5640,9 @@ LCE42:
                 lda $0319                    ; CE42= AD 19 03    -..
                 asl a                        ; CE45= 0A          .
                 tay                          ; CE46= A8          (
-                lda LC36D,y                  ; CE47= B9 6D C3    9mC
+                lda multiplyBy640Table,y                  ; CE47= B9 6D C3    9mC
                 sta $D7                      ; CE4A= 85 D7       .W
-                lda LC36D+1,y                  ; CE4C= B9 6E C3    9nC
+                lda multiplyBy640Table+1,y                  ; CE4C= B9 6E C3    9nC
                 ldy $0353                    ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
@@ -7044,7 +7053,7 @@ LD75E:
                 bne LD746                    ; D769= D0 DB       P[
 LD76B:
                 jsr LD6DE                    ; D76B= 20 DE D6     ^V
-                ldy $0355                    ; D76E= AC 55 03    ,U.
+                ldy vduCurrentScreenMODE                    ; D76E= AC 55 03    ,U.
                 tax                          ; D771= AA          *
                 rts                          ; D772= 60          `
 
@@ -7065,9 +7074,9 @@ LD77A:
                 lsr a                        ; D788= 4A          J
                 asl a                        ; D789= 0A          .
                 tay                          ; D78A= A8          (
-                lda LC36D,y                  ; D78B= B9 6D C3    9mC
+                lda multiplyBy640Table,y                  ; D78B= B9 6D C3    9mC
                 sta $D8                      ; D78E= 85 D8       .X
-                lda LC36D+1,y                ; D790= B9 6E C3    9nC
+                lda multiplyBy640Table+1,y                ; D790= B9 6E C3    9nC
                 ldy $0356                    ; D793= AC 56 03    ,V.
                 beq LD79B                    ; D796= F0 03       p.
                 lsr $D8                      ; D798= 46 D8       FX
@@ -7160,7 +7169,7 @@ LD833:
 ; OSBYTE &84 - Read top of user memory
 ; ------------------------------------
 osbyte84:
-                ldx $0355                    ; Get current screen MODE
+                ldx vduCurrentScreenMODE                    ; Get current screen MODE
 
 ; OSBYTE &85 - Read top of user memory for specified MODE
 ; -------------------------------------------------------
@@ -7310,11 +7319,11 @@ resetEntryPoint:
                 inx                          ; X=&00
                 stx $FE00                    ;
                 stx $028D                    ; Set Last Break Type to &00=SoftBreak
-                lda #LFE05.clearNMI|LFE05.clearHighToneIRQ|LFE05.clearRTCIRQ|LFE05.clearDisplayEndIRQ|LFE05.romPageEnable
-                sta LFE05
-                lda LFE00                    ; Read PowerOn flag from ULA
-                and #LFE00.powerOnReset
-                eor #LFE00.powerOnReset      ; Save PowerOn flag
+                lda #intClearAndPagingRegister.clearNMI|intClearAndPagingRegister.clearHighToneIRQ|intClearAndPagingRegister.clearRTCIRQ|intClearAndPagingRegister.clearDisplayEndIRQ|intClearAndPagingRegister.romPageEnable
+                sta intClearAndPagingRegister
+                lda intStatusAndControlRegister                    ; Read PowerOn flag from ULA
+                and #intStatusAndControlRegister.powerOnReset
+                eor #intStatusAndControlRegister.powerOnReset      ; Save PowerOn flag
                 pha
                 beq LD8FB                    ; If PowerOn, jump to clear memory
 
@@ -7400,17 +7409,17 @@ LD94D:
 LD965:
                 lda $028F                    ; Get startup options
                 jsr getNormalisedMODE                    ; Convert mode number into ULA mode setting
-                ora #LFE07.capsLockLED|LFE07.tapeOutput
+                ora #miscellaneousControlRegister.capsLockLED|miscellaneousControlRegister.tapeOutput
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; D96D= 8D 82 02    ...
-                sta LFE07                    ; D970= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; D96D= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; D970= 8D 07 FE    ..~
                 .endif
-                sta LFE04                    ; D973= 8D 04 FE    ..~
-                ldx #LFE00.rtcIRQ|LFE00.displayEndIRQ
+                sta cassetteDataShiftRegister                    ; D973= 8D 04 FE    ..~
+                ldx #intStatusAndControlRegister.rtcIRQ|intStatusAndControlRegister.displayEndIRQ
                 stx $025B                    ; D978= 8E 5B 02    .[.
-                stx LFE00                    ; D97B= 8E 00 FE    ..~
+                stx intStatusAndControlRegister                    ; D97B= 8E 00 FE    ..~
                 jsr osbyte74                    ; D97E= 20 76 E9     vi
                 ldx $0284                    ; D981= AE 84 02    ...
                 beq LD989                    ; D984= F0 03       p.
@@ -7465,10 +7474,10 @@ compareROMsLoop:
                 sta $FB
 compareROMContentsLoop:
                 jsr prepareForROMPaging
-                sty LFE05                    ; page in higher ROM
+                sty intClearAndPagingRegister                    ; page in higher ROM
                 lda ($FA),y                  ; load higher ROM byte
                 jsr prepareForROMPaging      
-                stx LFE05                    ; page in lower ROM
+                stx intClearAndPagingRegister                    ; page in lower ROM
                 cmp ($FA),y                  ; do bytes match?
                 bne compareROMsLoop ; taken if ROMs don't match - check next ROM
                 inc $FA                      ; next address LSB
@@ -7681,7 +7690,7 @@ LDAF2:
                 ldx $F4                      ; Save current ROM in X
                 sty $F4                      ; Select ROM Y
                 jsr prepareForROMPaging                    ; Electron paging mechanism
-                sty LFE05                    ; Page in ROM Y
+                sty intClearAndPagingRegister                    ; Page in ROM Y
                 ldy #$00                     ; Get byte pointed to by &F6/7
                 lda ($F6),y
 LDB00:
@@ -7741,7 +7750,7 @@ irq1EntryPoint:
                 pha                          ; save return thunk MSB
                 lda #<LDB82-1
                 pha                          ; save return thunk LSB
-                ldy LFE00                    ; Y=ULA IRQ flags
+                ldy intStatusAndControlRegister                    ; Y=ULA IRQ flags
                 tya                          ; A=ULA IRQ flags
                 lsr a                        ; C set if any ULA IRQ
                 bcc LDB6F                    ; taken if no ULA IRQ
@@ -7817,7 +7826,7 @@ LDBBB:
                 dec $0240
                 ldy #$10                     ; Y=clear Display End IRQ value
 LDBC5:
-                sty LFE05
+                sty intClearAndPagingRegister
                 lda $0283
                 tax
                 eor #$0F
@@ -8973,13 +8982,13 @@ selectROMX:
 selectROMA:
                 sta $F4
                 jsr prepareForROMPaging
-                sta LFE05
+                sta intClearAndPagingRegister
                 rts
 
 prepareForROMPaging:
                 pha
-                lda #LFE05.romPageEnable|4
-                sta LFE05
+                lda #intClearAndPagingRegister.romPageEnable|4
+                sta intClearAndPagingRegister
                 pla
                 rts
 
@@ -9114,14 +9123,14 @@ osbyte7D:
                 jmp $0403                    ; Inform Tube and return
 
 osbyte89:
-                lda $0282                    ; E48A= AD 82 02    -..
+                lda miscRegisterCopy                    ; E48A= AD 82 02    -..
                 and #$BF                     ; E48D= 29 BF       )?
                 cpx #$00                     ; E48F= E0 00       `.
                 beq LE495                    ; E491= F0 02       p.
                 ora #$40                     ; E493= 09 40       .@
 LE495:
-                sta $0282                    ; E495= 8D 82 02    ...
-                sta LFE07                    ; E498= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; E495= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; E498= 8D 07 FE    ..~
                 rts                          ; E49B= 60          `
 
 osbyte09:
@@ -9782,15 +9791,15 @@ callEVENTV:
 LE7E5:
                 bcc LE7F9                    ; E7E5= 90 12       ..
                 pha                          ; E7E7= 48          H
-                lda $0282                    ; E7E8= AD 82 02    -..
+                lda miscRegisterCopy                    ; E7E8= AD 82 02    -..
                 ora #$80                     ; E7EB= 09 80       ..
-                sta LFE07                    ; E7ED= 8D 07 FE    ..~
+                sta miscellaneousControlRegister                    ; E7ED= 8D 07 FE    ..~
                 and #$7F                     ; E7F0= 29 7F       ).
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; E7F2= 8D 82 02    ...
-                sta LFE07                    ; E7F5= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; E7F2= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; E7F5= 8D 07 FE    ..~
                 .endif
                 pla                          ; E7F8= 68          h
 LE7F9:
@@ -9893,17 +9902,17 @@ LE87B:
 
 osbyte97:
                 tya                          ; E885= 98          .
-                sta LFE00,x                  ; E886= 9D 00 FE    ..~
+                sta intStatusAndControlRegister,x                  ; E886= 9D 00 FE    ..~
 osbyte90:
                 rts                          ; E889= 60          `
 
 osbyte93:
                 tya                          ; E88A= 98          .
-                sta LFC00,x                  ; E88B= 9D 00 FC    ..|
+                sta fredPage,x                  ; E88B= 9D 00 FC    ..|
                 rts                          ; E88E= 60          `
 
 osbyte92:
-                ldy LFC00,x                  ; E88F= BC 00 FC    <.|
+                ldy fredPage,x                  ; E88F= BC 00 FC    <.|
                 rts                          ; E892= 60          `
 
 LE893:
@@ -9986,21 +9995,21 @@ LE92D:
                 bne LE975                    ; E932= D0 41       PA
                 php                          ; E934= 08          .
                 sei                          ; E935= 78          x
-                lda $0282                    ; E936= AD 82 02    -..
+                lda miscRegisterCopy                    ; E936= AD 82 02    -..
                 and #$F9                     ; E939= 29 F9       )y
                 ora $0820                    ; E93B= 0D 20 08    . .
-                cmp $0282                    ; E93E= CD 82 02    M..
+                cmp miscRegisterCopy                    ; E93E= CD 82 02    M..
                 beq LE949                    ; E941= F0 06       p.
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; E943= 8D 82 02    ...
-                sta LFE07                    ; E946= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; E943= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; E946= 8D 07 FE    ..~
                 .endif
 LE949:
                 plp                          ; E949= 28          (
                 lda $0821                    ; E94A= AD 21 08    -!.
-                sta LFE06                    ; E94D= 8D 06 FE    ..~
+                sta theCounterRegister                    ; E94D= 8D 06 FE    ..~
 
 ; Update a counter
 LE950:
@@ -10021,7 +10030,7 @@ LE950:
                 eor LE893+7,x                  ; E967= 5D 9A E8    ].h
                 and $0822                    ; E96A= 2D 22 08    -".
                 ora $0823                    ; E96D= 0D 23 08    .#.
-                sta LFE06                    ; ULA counter
+                sta theCounterRegister                    ; ULA counter
                 pla                          ; E973= 68          h
                 tax                          ; E974= AA          *
 LE975:
@@ -10249,7 +10258,7 @@ LEABA:
                 stx $0242                    ; EABC= 8E 42 02    .B.
 LEABF:
                 php                          ; EABF= 08          .
-                lda $0282                    ; EAC0= AD 82 02    -..
+                lda miscRegisterCopy                    ; EAC0= AD 82 02    -..
                 and #$7F                     ; EAC3= 29 7F       ).
                 pha                          ; EAC5= 48          H
                 lda #$10                     ; EAC6= A9 10       ).
@@ -10264,13 +10273,13 @@ LEABF:
                 pha                          ; EAD0= 48          H
 LEAD1:
                 pla                          ; EAD1= 68          h
-                cmp $0282                    ; EAD2= CD 82 02    M..
+                cmp miscRegisterCopy                    ; EAD2= CD 82 02    M..
                 beq LEADD                    ; EAD5= F0 06       p.
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; EAD7= 8D 82 02    ...
-                sta LFE07                    ; EADA= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; EAD7= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; EADA= 8D 07 FE    ..~
                 .endif
 LEADD:
                 pla                          ; EADD= 68          h
@@ -10854,7 +10863,7 @@ LED85:
                 pha
                 lda #$08
                 sta $F4                      ; Page in ROM 8 to read keyboard
-                sta LFE05
+                sta intClearAndPagingRegister
                 ldy #$FF                     ; Start at &AFFF for column 12
                 sty $FA
                 ldx #$AF
@@ -11160,7 +11169,7 @@ LEEBA:
 LEEBF:
                 jmp ($00FA)                  ; EEBF= 6C FA 00    lz.
 LEEC2:
-                jmp (LFDFE)                  ; EEC2= 6C FE FD    l~}
+                jmp (jimPagedEntryPoint)                  ; EEC2= 6C FE FD    l~}
 
 ; Ctrl+Keypress translation table
 ; -------------------------------
@@ -12332,13 +12341,13 @@ LF4EE:
                 beq LF4FF                    ; F4F6= F0 07       p.
                 pla                          ; F4F8= 68          h
                 lda $BD                      ; F4F9= A5 BD       %=
-                sta LFE04                    ; F4FB= 8D 04 FE    ..~
+                sta cassetteDataShiftRegister                    ; F4FB= 8D 04 FE    ..~
                 rts                          ; F4FE= 60          `
 
 LF4FF:
-                ldy LFE04                    ; F4FF= AC 04 FE    ,.~
+                ldy cassetteDataShiftRegister                    ; F4FF= AC 04 FE    ,.~
                 lda #$40                     ; F502= A9 40       )@
-                sta LFE05                    ; F504= 8D 05 FE    ..~
+                sta intClearAndPagingRegister                    ; F504= 8D 05 FE    ..~
                 pla                          ; F507= 68          h
                 asl a                        ; F508= 0A          .
                 asl a                        ; F509= 0A          .
@@ -12917,14 +12926,14 @@ LF8BC:
 LF8C9:
                 php                          ; F8C9= 08          .
                 sei                          ; F8CA= 78          x
-                lda $0282                    ; F8CB= AD 82 02    -..
+                lda miscRegisterCopy                    ; F8CB= AD 82 02    -..
                 and #$F9                     ; F8CE= 29 F9       )y
                 ora #$04                     ; F8D0= 09 04       ..
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; F8D2= 8D 82 02    ...
-                sta LFE07                    ; F8D5= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; F8D2= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; F8D5= 8D 07 FE    ..~
                 .endif
                 plp                          ; F8D8= 28          (
                 rts                          ; F8D9= 60          `
@@ -13242,13 +13251,13 @@ LFA8C:
                 bmi LFAAA                    ; FA96= 30 12       0.
                 lda #$01                     ; FA98= A9 01       ).
                 sta $EA                      ; FA9A= 85 EA       .j
-                lda $0282                    ; FA9C= AD 82 02    -..
+                lda miscRegisterCopy                    ; FA9C= AD 82 02    -..
                 and #$F9                     ; FA9F= 29 F9       )y
                 .if version==300
                 jsr LE495
                 .else
-                sta $0282                    ; FAA1= 8D 82 02    ...
-                sta LFE07                    ; FAA4= 8D 07 FE    ..~
+                sta miscRegisterCopy                    ; FAA1= 8D 82 02    ...
+                sta miscellaneousControlRegister                    ; FAA4= 8D 07 FE    ..~
                 .endif
                 plp                          ; FAA7= 28          (
                 sec                          ; FAA8= 38          8
@@ -13264,9 +13273,9 @@ LFAB0:
                 php                          ; FAB0= 08          .
                 sei                          ; FAB1= 78          x
                 lda $025B                    ; FAB2= AD 5B 02    -[.
-                and #~(LFE00.highToneIRQ|LFE00.txEmptyIRQ|LFE00.rxFullIRQ)&$ff
+                and #~(intStatusAndControlRegister.highToneIRQ|intStatusAndControlRegister.txEmptyIRQ|intStatusAndControlRegister.rxFullIRQ)&$ff
                 sta $025B                    ; FAB7= 8D 5B 02    .[.
-                sta LFE00                    ; FABA= 8D 00 FE    ..~
+                sta intStatusAndControlRegister                    ; FABA= 8D 00 FE    ..~
                 plp                          ; FABD= 28          (
                 rts                          ; FABE= 60          `
 
@@ -13287,7 +13296,7 @@ LFABF:
                 bne LFADD                    ; FACB= D0 10       P.
 LFACD:
                 ldx #$00                     ; FACD= A2 00       ".
-                stx LFE06                    ; FACF= 8E 06 FE    ..~
+                stx theCounterRegister                    ; FACF= 8E 06 FE    ..~
                 .if version==100
                 stx $CA                      ; FAD2= 86 CA       .J
                 .endif
@@ -13307,30 +13316,30 @@ LFADD:
                 php
                 sei
                 pha
-                lda $0282
-                and #~(LFE07.commsModeMask)&$ff
-                sta $0282
+                lda miscRegisterCopy
+                and #~(miscellaneousControlRegister.commsModeMask)&$ff
+                sta miscRegisterCopy
                 pla
-                ora $0282
-                sta $0282
+                ora miscRegisterCopy
+                sta miscRegisterCopy
                 plp
-                sta LFE07
+                sta miscellaneousControlRegister
                 sty $025b
-                sty LFE00
+                sty intStatusAndControlRegister
                 rts
                 .else
                 ora #$40                     ; FADD= 09 40       .@
-                sta $02F4                    ; FADF= 8D F4 02    .t.
+                sta internalCassetteFilingSystemVar                    ; FADF= 8D F4 02    .t.
                 php                          ; FAE2= 08          .
                 sei                          ; FAE3= 78          x
-                lda $0282                    ; FAE4= AD 82 02    -..
-                and #~(LFE07.commsModeMask)&$ff
-                ora $02F4                    ; FAE9= 0D F4 02    .t.
-                sta $0282                    ; FAEC= 8D 82 02    ...
+                lda miscRegisterCopy                    ; FAE4= AD 82 02    -..
+                and #~(miscellaneousControlRegister.commsModeMask)&$ff
+                ora internalCassetteFilingSystemVar                    ; FAE9= 0D F4 02    .t.
+                sta miscRegisterCopy                    ; FAEC= 8D 82 02    ...
                 plp                          ; FAEF= 28          (
-                sta LFE07                    ; FAF0= 8D 07 FE    ..~
+                sta miscellaneousControlRegister                    ; FAF0= 8D 07 FE    ..~
                 sty $025B                    ; FAF3= 8C 5B 02    .[.
-                sty LFE00                    ; FAF6= 8C 00 FE    ..~
+                sty intStatusAndControlRegister                    ; FAF6= 8C 00 FE    ..~
                 rts                          ; FAF9= 60          `
                 .endif
 
@@ -13602,14 +13611,14 @@ rtsFFA2:
 
 osbyte95:
                 tya                          ; FFA3= 98          .
-                sta LFD00,x                  ; FFA4= 9D 00 FD    ..}
+                sta jimPage,x                  ; FFA4= 9D 00 FD    ..}
                 rts                          ; FFA7= 60          `
 
 osbyte94:
-                ldy LFD00,x                  ; FFA8= BC 00 FD    <.}
+                ldy jimPage,x                  ; FFA8= BC 00 FD    <.}
                 rts                          ; FFAB= 60          `
 
-                asl LFE05                    ; FFAC= 0E 05 FE    ..~
+                asl intClearAndPagingRegister                    ; FFAC= 0E 05 FE    ..~
                 bit LFC2C                    ; FFAF= 2C 2C FC    ,,|
                 rti                          ; FFB2= 40          @
 
