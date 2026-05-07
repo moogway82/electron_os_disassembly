@@ -3855,7 +3855,8 @@ LC3B4:
                 .byte 39                     ; Mode 4 - 40 columns
                 .byte 19                     ; Mode 5 - 20 columns
                 .byte 39                     ; Mode 6 - 40 columns
-LC3BB:
+                
+bytesPerCharacter:
                 .byte 8                      ; Mode 0 - 8 bytes/char
                 .byte 16                     ; Mode 1 - 16 bytes/char
                 .byte 32                     ; Mode 2 - 32 bytes/char
@@ -3879,7 +3880,8 @@ LC3C8:
 LC3CD:
                 .byte %00000100
                 .byte %00000010
-LC3CF:
+
+numberOfColoursMinusOneInMODETable:
                 .byte %00000001
                 .byte 3
                 .byte 15
@@ -5115,21 +5117,23 @@ setMODE:
                 stx vduCurrentScreenMODE
                 .else
 
-                jsr getNormalisedMODE                    ; CB30= 20 DA DA     ZZ
+                jsr getNormalisedMODE                    	; CB30= 20 DA DA     ZZ
                 stx vduCurrentScreenMODE                    ; CB33= 8E 55 03    .U.
-                php                          ; CB36= 08          .
-                sei                          ; CB37= 78          x
-                sta internalCassetteFilingSystemVar                    ; CB38= 8D F4 02    .t.
-                lda miscRegisterCopy                    ; CB3B= AD 82 02    -..
+                php                          				; CB36= 08          .
+                sei                          				; CB37= 78          x
+                sta internalCassetteFilingSystemVar         ; CB38= 8D F4 02    .t.
+                lda miscRegisterCopy                    	; CB3B= AD 82 02    -..
                 and #~(7<<miscellaneousControlRegister.displayModeShift)&$ff
-                ora internalCassetteFilingSystemVar                    ; CB40= 0D F4 02    .t.
-                sta miscRegisterCopy                    ; CB43= 8D 82 02    ...
-                sta miscellaneousControlRegister                    ; CB46= 8D 07 FE    ..~
+                ora internalCassetteFilingSystemVar         ; CB40= 0D F4 02    .t.
+                sta miscRegisterCopy                    	; CB43= 8D 82 02    ...
+                sta miscellaneousControlRegister            ; CB46= 8D 07 FE    ..~
+
                 .endif
+
                 plp                          ; CB49= 28          (
-                lda LC3CF,x                  ; CB4A= BD CF C3    =OC
+                lda numberOfColoursMinusOneInMODETable,x                  ; CB4A= BD CF C3    =OC
                 sta $0360                    ; CB4D= 8D 60 03    .`.
-                lda LC3BB,x                  ; CB50= BD BB C3    =;C
+                lda bytesPerCharacter,x                  ; CB50= BD BB C3    =;C
                 sta $034F                    ; CB53= 8D 4F 03    .O.
                 lda LC3F5,x                  ; CB56= BD F5 C3    =uC
                 sta $0361                    ; CB59= 8D 61 03    .a.
