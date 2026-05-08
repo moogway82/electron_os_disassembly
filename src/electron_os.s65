@@ -1595,7 +1595,7 @@ vduColourMaskLeft                          = $0362     ; colour mask left.  Bits
                                                         ; MODE 0,3,4,6,7    = $80
                                                         ; MODE 1,5          = $88
                                                         ; MODE 2            = $AA
-vduColourMaskRight                         = $0363     ; colour mask right. Bits for the
+vduColourMaskRight                         = $0363      ; colour mask right. Bits for the
                                                         ; setting the rightmost pixel of a
                                                         ; byte to white:
                                                         ; MODE 0,3,4,6,7    = $01
@@ -3855,7 +3855,7 @@ LC3B4:
                 .byte 39                     ; Mode 4 - 40 columns
                 .byte 19                     ; Mode 5 - 20 columns
                 .byte 39                     ; Mode 6 - 40 columns
-                
+
 bytesPerCharacter:
                 .byte 8                      ; Mode 0 - 8 bytes/char
                 .byte 16                     ; Mode 1 - 16 bytes/char
@@ -3864,7 +3864,8 @@ bytesPerCharacter:
                 .byte 8                      ; Mode 4 - 8 bytes/char
                 .byte 16                     ; Mode 5 - 16 bytes/char
                 .byte 8                      ; Mode 6 - 8 bytes/char
-LC3C2:
+                
+sixteenColourMODEMaskTable:
                 .byte %10101010
                 .byte %01010101
                 .byte %10001000
@@ -3882,13 +3883,13 @@ LC3CD:
                 .byte %00000010
 
 numberOfColoursMinusOneInMODETable:
-                .byte %00000001
-                .byte 3
-                .byte 15
-                .byte 1
-                .byte 1
-                .byte 3
-                .byte 1
+                .byte 1 					; Mode 0 - 2 colours
+                .byte 3 					; Mode 1 - 2 colours
+                .byte 15 					; Mode 2 - 16 colours
+                .byte 1 					; Mode 3 - 2 colours
+                .byte 1 					; Mode 4 - 2 colours
+                .byte 3 					; Mode 5 - 4 colours
+                .byte 1 					; Mode 6 - 2 colours
 LC3D6:
                 .byte $00
 LC3D7:
@@ -3925,14 +3926,26 @@ LC3DE:
                 .byte $F3
                 .byte $FC
                 .byte $FF
-LC3F5:
+
+pixelsPerByteMinusOneInMODETable:
                 .byte 7
                 .byte 3
                 .byte 1
                 .byte 0
                 .byte 7
                 .byte 3
-LC3FB:
+; Overflow: the first two bytes of the next table are accessed as the last two bytes of
+; this table (zero for MODE 6 and 7 values).
+
+; This table describes how much memory each MODE takes. Eight byte table (one byte for
+; each MODE), overlapping with the next two tables.
+
+; DUAL-USE? Sound pitch offsets table: Notes played on different sound channels are offset in pitch
+; slightly from each other (perhaps to reduce phase shift effects when the same note is
+; played on two or more different channels). This is four bytes long (in the middle of
+; the previous table!). 
+
+screenDisplayMemoryIndexTable:
                 .byte $00
                 .byte $00
                 .byte $00
@@ -3941,25 +3954,29 @@ LC3FB:
                 .byte $02
                 .byte $03
                 .byte $03
+
 LC403:
                 .byte $04
                 .byte $00
                 .byte $06
                 .byte $02
-LC407:
+
+screenMemorySizeInBytesHigh:
                 .byte >(20*1024)
                 .byte >(16*1024)
                 .byte >(10*1024)
                 .byte >(8*1024)
-LC40B:
+
+screenMemoryStartHigh:
                 .byte $30                    ; $3000 (20 KB)
                 .byte $40                    ; $4000 (16 KB)
                 .byte $58                    ; $5800 (10 KB)
                 .byte $60                    ; $6000 (8 KB)
 
-LC40F:
+bytesPerRowLow:
                 .byte <320
                 .byte <640
+                
 LC411:
                 .word LD29D
                 .word LD295
@@ -4193,7 +4210,7 @@ LC534:
                 rts                          ; C534= 60          `
 
 LC535:
-                lda $0361                    ; C535= AD 61 03    -a.
+                lda vduPixelsPerByteMinusOne                    ; C535= AD 61 03    -a.
                 beq LC534                    ; C538= F0 FA       pz
                 lda #$20                     ; C53A= A9 20       )
                 bne LC523                    ; C53C= D0 E5       Pe
@@ -4206,18 +4223,18 @@ LC53E:
                 bmi LC56C                    ; C54C= 30 1E       0.
                 lda $D6                      ; C54E= A5 D6       %V
                 sec                          ; C550= 38          8
-                sbc $034F                    ; C551= ED 4F 03    mO.
+                sbc vduBytesPerCharacter                    ; C551= ED 4F 03    mO.
                 tax                          ; C554= AA          *
                 lda $D7                      ; C555= A5 D7       %W
                 sbc #$00                     ; C557= E9 00       i.
-                cmp $034E                    ; C559= CD 4E 03    MN.
+                cmp vduStartScreenAddressHighByte                    ; C559= CD 4E 03    MN.
                 bcs LC561                    ; C55C= B0 03       0.
-                adc $0354                    ; C55E= 6D 54 03    mT.
+                adc vduScreenSizeHighByte                    ; C55E= 6D 54 03    mT.
 LC561:
                 stx $D6                      ; C561= 86 D6       .V
                 bpl LC569                    ; C563= 10 04       ..
                 sec                          ; C565= 38          8
-                sbc $0354                    ; C566= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; C566= ED 54 03    mT.
 LC569:
                 sta $D7                      ; C569= 85 D7       .W
                 rts                          ; C56B= 60          `
@@ -4296,7 +4313,7 @@ vdu9EntryPoint:
                 bcs LC600                    ; C5EE= B0 10       0.
                 inc $0318                    ; C5F0= EE 18 03    n..
                 lda $D6                      ; C5F3= A5 D6       %V
-                adc $034F                    ; C5F5= 6D 4F 03    mO.
+                adc vduBytesPerCharacter                    ; C5F5= 6D 4F 03    mO.
                 tax                          ; C5F8= AA          *
                 lda $D7                      ; C5F9= A5 D7       %W
                 adc #$00                     ; C5FB= 69 00       i.
@@ -4425,7 +4442,7 @@ LC6D2:
                 plp                          ; C6D2= 28          (
                 bne LC6C8                    ; C6D3= D0 F3       Ps
                 lda $D8                      ; C6D5= A5 D8       %X
-                and $0360                    ; C6D7= 2D 60 03    -`.
+                and vduNumberOfLogicalColoursMinusOne                    ; C6D7= 2D 60 03    -`.
 LC6DA:
                 jsr LD6DE                    ; C6DA= 20 DE D6     ^V
                 ldy #$04                     ; C6DD= A0 04        .
@@ -4434,7 +4451,7 @@ LC6E1:
                 lda #$FF                     ; C6E1= A9 FF       ).
                 bne LC6DA                    ; C6E3= D0 F5       Pu
 osword0B:
-                and $0360                    ; C6E5= 2D 60 03    -`.
+                and vduNumberOfLogicalColoursMinusOne                    ; C6E5= 2D 60 03    -`.
                 tax                          ; C6E8= AA          *
                 lda $036F,x                  ; C6E9= BD 6F 03    =o.
 LC6EC:
@@ -4516,7 +4533,7 @@ LC75E:
 LC769:
                 jsr LC74D                    ; C769= 20 4D C7     MG
 LC76C:
-                lda $0361                    ; C76C= AD 61 03    -a.
+                lda vduPixelsPerByteMinusOne                    ; C76C= AD 61 03    -a.
                 beq LC7A4                    ; C76F= F0 33       p3
                 ldx $035A                    ; C771= AE 5A 03    .Z.
                 ldy $035C                    ; C774= AC 5C 03    ,\.
@@ -4547,7 +4564,7 @@ LC7A4:
 LC7A5:
                 tay                          ; C7A5= A8          (
                 bpl LC7BB                    ; C7A6= 10 13       ..
-                and $0360                    ; C7A8= 2D 60 03    -`.
+                and vduNumberOfLogicalColoursMinusOne                    ; C7A8= 2D 60 03    -`.
                 php                          ; C7AB= 08          .
                 sei                          ; C7AC= 78          x
                 sta $D8                      ; C7AD= 85 D8       .X
@@ -4571,9 +4588,9 @@ LC7C6:
                 bpl LC7CA                    ; C7C7= 10 01       ..
                 iny                          ; C7C9= C8          H
 LC7CA:
-                and $0360                    ; C7CA= 2D 60 03    -`.
+                and vduNumberOfLogicalColoursMinusOne                    ; C7CA= 2D 60 03    -`.
                 sta $D8                      ; C7CD= 85 D8       .X
-                lda $0360                    ; C7CF= AD 60 03    -`.
+                lda vduNumberOfLogicalColoursMinusOne                    ; C7CF= AD 60 03    -`.
                 and #$07                     ; C7D2= 29 07       ).
                 clc                          ; C7D4= 18          .
                 adc $D8                      ; C7D5= 65 D8       eX
@@ -4597,12 +4614,12 @@ LC7EF:
 LC7F6:
                 lda #$00                     ; C7F6= A9 00       ).
                 sta $0322                    ; C7F8= 8D 22 03    .".
-                lda $0360                    ; C7FB= AD 60 03    -`.
+                lda vduNumberOfLogicalColoursMinusOne                    ; C7FB= AD 60 03    -`.
                 and #$07                     ; C7FE= 29 07       ).
                 jsr LC7BF                    ; C800= 20 BF C7     ?G
                 lda #$80                     ; C803= A9 80       ).
                 jsr LC7BF                    ; C805= 20 BF C7     ?G
-                ldx $0360                    ; C808= AE 60 03    .`.
+                ldx vduNumberOfLogicalColoursMinusOne                    ; C808= AE 60 03    .`.
                 stx $031F                    ; C80B= 8E 1F 03    ...
                 cpx #$03                     ; C80E= E0 03       `.
                 beq LC823                    ; C810= F0 11       p.
@@ -4643,7 +4660,7 @@ LC848:
                 and #$0F                     ; C84A= 29 0F       ).
                 sta $FB                      ; C84C= 85 FB       .{
                 txa                          ; C84E= 8A          .
-                and $0360                    ; C84F= 2D 60 03    -`.
+                and vduNumberOfLogicalColoursMinusOne                    ; C84F= 2D 60 03    -`.
                 tay                          ; C852= A8          (
                 lda $FB                      ; C853= A5 FB       %{
                 bcs LC85A                    ; C855= B0 03       0.
@@ -4655,7 +4672,7 @@ LC85A:
                 sta $FB                      ; C861= 85 FB       .{
 LC863:
                 tya                          ; C863= 98          .
-                ldx $0360                    ; C864= AE 60 03    .`.
+                ldx vduNumberOfLogicalColoursMinusOne                    ; C864= AE 60 03    .`.
                 cpx #$03                     ; C867= E0 03       `.
                 beq LC88A                    ; C869= F0 1F       p.
                 bcc LC889                    ; C86B= 90 1C       ..
@@ -4708,7 +4725,7 @@ osword0C:
 LC8A3:
                 lda $D8                      ; C8A3= A5 D8       %X
                 pha                          ; C8A5= 48          H
-                ldx $0360                    ; C8A6= AE 60 03    .`.
+                ldx vduNumberOfLogicalColoursMinusOne                    ; C8A6= AE 60 03    .`.
 LC8A9:
                 ldy $036F,x                  ; C8A9= BC 6F 03    <o.
                 cpy #$08                     ; C8AC= C0 08       @.
@@ -4861,7 +4878,7 @@ LC97A:
                 rts                          ; C985= 60          `
 
 LC986:
-                ldx $0361                    ; C986= AE 61 03    .a.
+                ldx vduPixelsPerByteMinusOne                    ; C986= AE 61 03    .a.
                 beq LC937                    ; C989= F0 AC       p,
                 jmp LCF71                    ; C98B= 4C 71 CF    LqO
 
@@ -4878,7 +4895,7 @@ LC98E:
 LC9A4:
                 and #$40                     ; C9A4= 29 40       )@
                 beq LC9AF                    ; C9A6= F0 07       p.
-                lda $0360                    ; C9A8= AD 60 03    -`.
+                lda vduNumberOfLogicalColoursMinusOne                    ; C9A8= AD 60 03    -`.
                 sbc #$04                     ; C9AB= E9 04       i.
                 ora #$3F                     ; C9AD= 09 3F       .?
 LC9AF:
@@ -4887,7 +4904,7 @@ LC9AF:
                 and #$30                     ; C9B3= 29 30       )0
                 bne LC9D0                    ; C9B5= D0 19       P.
                 tax                          ; C9B7= AA          *
-                lda $0360                    ; C9B8= AD 60 03    -`.
+                lda vduNumberOfLogicalColoursMinusOne                    ; C9B8= AD 60 03    -`.
                 sta $FA                      ; C9BB= 85 FA       .z
                 ldy #$07                     ; C9BD= A0 07        .
                 sec                          ; C9BF= 38          8
@@ -4909,7 +4926,7 @@ LC9D1:
                 lda $0351                    ; C9D4= AD 51 03    -Q.
                 jsr LCC4F                    ; C9D7= 20 4F CC     OL
                 bcs LC9F0                    ; C9DA= B0 14       0.
-                adc $0354                    ; C9DC= 6D 54 03    mT.
+                adc vduScreenSizeHighByte                    ; C9DC= 6D 54 03    mT.
                 bcc LC9F0                    ; C9DF= 90 0F       ..
 LC9E1:
                 ldx $0350                    ; C9E1= AE 50 03    .P.
@@ -4917,7 +4934,7 @@ LC9E1:
                 jsr LCAC9                    ; C9E7= 20 C9 CA     IJ
                 bpl LC9F0                    ; C9EA= 10 04       ..
                 sec                          ; C9EC= 38          8
-                sbc $0354                    ; C9ED= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; C9ED= ED 54 03    mT.
 LC9F0:
                 sta $0351                    ; C9F0= 8D 51 03    .Q.
                 stx $0350                    ; C9F3= 8E 50 03    .P.
@@ -4998,7 +5015,7 @@ LCA87:
                 ldy #$00                     ; CA89= A0 00        .
                 sty $034D                    ; CA8B= 8C 4D 03    .M.
                 sta $034C                    ; CA8E= 8D 4C 03    .L.
-                lda $034F                    ; CA91= AD 4F 03    -O.
+                lda vduBytesPerCharacter                    ; CA91= AD 4F 03    -O.
                 lsr a                        ; CA94= 4A          J
                 beq LCAA0                    ; CA95= F0 09       p.
 LCA97:
@@ -5035,7 +5052,7 @@ LCAC9:
                 pha                          ; CAC9= 48          H
                 txa                          ; CACA= 8A          .
                 clc                          ; CACB= 18          .
-                adc $0352                    ; CACC= 6D 52 03    mR.
+                adc vduBytesPerCharacterRowLow                    ; CACC= 6D 52 03    mR.
                 tax                          ; CACF= AA          *
                 pla                          ; CAD0= 68          h
                 adc $0353                    ; CAD1= 6D 53 03    mS.
@@ -5117,7 +5134,7 @@ setMODE:
                 stx vduCurrentScreenMODE
                 .else
 
-                jsr getNormalisedMODE                    	; CB30= 20 DA DA     ZZ
+                jsr getNormalisedMODE                    	; Returns X as Mode no. 0-6, A as mode * 8 for Lookup table ; CB30= 20 DA DA     ZZ
                 stx vduCurrentScreenMODE                    ; CB33= 8E 55 03    .U.
                 php                          				; CB36= 08          .
                 sei                          				; CB37= 78          x
@@ -5127,39 +5144,38 @@ setMODE:
                 ora internalCassetteFilingSystemVar         ; CB40= 0D F4 02    .t.
                 sta miscRegisterCopy                    	; CB43= 8D 82 02    ...
                 sta miscellaneousControlRegister            ; CB46= 8D 07 FE    ..~
-
                 .endif
 
                 plp                          ; CB49= 28          (
-                lda numberOfColoursMinusOneInMODETable,x                  ; CB4A= BD CF C3    =OC
-                sta $0360                    ; CB4D= 8D 60 03    .`.
-                lda bytesPerCharacter,x                  ; CB50= BD BB C3    =;C
-                sta $034F                    ; CB53= 8D 4F 03    .O.
-                lda LC3F5,x                  ; CB56= BD F5 C3    =uC
-                sta $0361                    ; CB59= 8D 61 03    .a.
+                lda numberOfColoursMinusOneInMODETable,x    ; Look up the no. colours for mode, store in A              ; CB4A= BD CF C3    =OC
+                sta vduNumberOfLogicalColoursMinusOne       ; Save that in VDU Var             				; CB4D= 8D 60 03    .`.
+                lda bytesPerCharacter,x                  	; Look up no. bytes per character 				; CB50= BD BB C3    =;C
+                sta vduBytesPerCharacter                    ; Save it in VDU Var 							; CB53= 8D 4F 03    .O.
+                lda pixelsPerByteMinusOneInMODETable,x      ; Look up pixels per byte 			            ; CB56= BD F5 C3    =uC
+                sta vduPixelsPerByteMinusOne                ; Save in VDU Var 							    ; CB59= 8D 61 03    .a.
                 bne LCB60                    ; CB5C= D0 02       P.
                 lda #$07                     ; CB5E= A9 07       ).
 LCB60:
                 asl a                        ; CB60= 0A          .
                 tay                          ; CB61= A8          (
-                lda LC3C2-1,y                  ; CB62= B9 C1 C3    9AC
-                sta $0363                    ; CB65= 8D 63 03    .c.
+                lda sixteenColourMODEMaskTable-1,y          ; mask table        							; CB62= B9 C1 C3    9AC
+                sta vduColourMaskRight                    	; store as colour mask right 					; CB65= 8D 63 03    .c.
 LCB68:
-                asl a                        ; CB68= 0A          .
-                bpl LCB68                    ; CB69= 10 FD       .}
-                sta $0362                    ; CB6B= 8D 62 03    .b.
-                ldy LC3FB,x                  ; CB6E= BC FB C3    <{C
-                sty $0356                    ; CB71= 8C 56 03    .V.
-                lda LC407,y                  ; CB74= B9 07 C4    9.D
-                sta $0354                    ; CB77= 8D 54 03    .T.
-                lda LC40B,y                  ; CB7A= B9 0B C4    9.D
-                sta $034E                    ; CB7D= 8D 4E 03    .N.
+                asl a                        				; shift A left 									; CB68= 0A          .
+                bpl LCB68                    				; until the top bit becomes set 				; CB69= 10 FD       .}
+                sta vduColourMaskLeft                    	; store as colour mask left 					; CB6B= 8D 62 03    .b.
+                ldy screenDisplayMemoryIndexTable,x                  ; CB6E= BC FB C3    <{C
+                sty vduCurrentScreenMODEGroup                    ; CB71= 8C 56 03    .V.
+                lda screenMemorySizeInBytesHigh,y                  ; CB74= B9 07 C4    9.D
+                sta vduScreenSizeHighByte                    ; CB77= 8D 54 03    .T.
+                lda screenMemoryStartHigh,y                  ; CB7A= B9 0B C4    9.D
+                sta vduStartScreenAddressHighByte                    ; CB7D= 8D 4E 03    .N.
                 tya                          ; CB80= 98          .
                 lsr a                        ; CB81= 4A          J
                 eor #$01                     ; CB82= 49 01       I.
                 tax                          ; CB84= AA          *
-                lda LC40F,x                  ; CB85= BD 0F C4    =.D
-                sta $0352                    ; CB88= 8D 52 03    .R.
+                lda bytesPerRowLow,x                  ; CB85= BD 0F C4    =.D
+                sta vduBytesPerCharacterRowLow                    ; CB88= 8D 52 03    .R.
                 inx                          ; CB8B= E8          h
                 stx $0353                    ; CB8C= 8E 53 03    .S.
                 lda #$43                     ; CB8F= A9 43       )C
@@ -5169,7 +5185,7 @@ LCB68:
                 jsr LC976                    ; CB9A= 20 76 C9     vI
 LCB9D:
                 ldx #$00                     ; CB9D= A2 00       ".
-                lda $034E                    ; CB9F= AD 4E 03    -N.
+                lda vduStartScreenAddressHighByte                    ; CB9F= AD 4E 03    -N.
                 jsr LC9F0                    ; CBA2= 20 F0 C9     pI
                 jsr LC561                    ; CBA5= 20 61 C5     aE
                 jsr LCC03                    ; CBA8= 20 03 CC     .L
@@ -5214,7 +5230,7 @@ LCBD4_300_213:
                 .else
                 
                 ldx #$06                     ; CBB6= A2 06       ".
-                ldy $034E                    ; CBB8= AC 4E 03    ,N.
+                ldy vduStartScreenAddressHighByte                    ; CBB8= AC 4E 03    ,N.
 LCBBB:
                 sty $D9,x                    ; CBBB= 94 D9       .Y
                 sta $D8,x                    ; CBBD= 95 D8       .X
@@ -5333,11 +5349,11 @@ LCC4F:
                 pha                          ; CC4F= 48          H
                 txa                          ; CC50= 8A          .
                 sec                          ; CC51= 38          8
-                sbc $0352                    ; CC52= ED 52 03    mR.
+                sbc vduBytesPerCharacterRowLow                    ; CC52= ED 52 03    mR.
                 tax                          ; CC55= AA          *
                 pla                          ; CC56= 68          h
                 sbc $0353                    ; CC57= ED 53 03    mS.
-                cmp $034E                    ; CC5A= CD 4E 03    MN.
+                cmp vduStartScreenAddressHighByte                    ; CC5A= CD 4E 03    MN.
 LCC5D:
                 rts                          ; CC5D= 60          `
 
@@ -5404,7 +5420,7 @@ LCCBD:
 setUpWriteCursor:
                 php                          ; CCC1= 08          .
                 pha                          ; CCC2= 48          H
-                ldy $034F                    ; CCC3= AC 4F 03    ,O.
+                ldy vduBytesPerCharacter                    ; CCC3= AC 4F 03    ,O.
                 dey                          ; CCC6= 88          .
                 lda #$FF                     ; CCC7= A9 FF       ).
                 cpy #$1F                     ; CCC9= C0 1F       @.
@@ -5432,7 +5448,7 @@ LCCDD:
 LCCE9:
                 jsr LCC4F                    ; CCE9= 20 4F CC     OL
                 bcs LCCF1                    ; CCEC= B0 03       0.
-                adc $0354                    ; CCEE= 6D 54 03    mT.
+                adc vduScreenSizeHighByte                    ; CCEE= 6D 54 03    mT.
 LCCF1:
                 sta $D9                      ; CCF1= 85 D9       .Y
                 stx $D8                      ; CCF3= 86 D8       .X
@@ -5490,7 +5506,7 @@ LCD47:
                 jsr LCAC9                    ; CD47= 20 C9 CA     IJ
                 bpl LCD50                    ; CD4A= 10 04       ..
                 sec                          ; CD4C= 38          8
-                sbc $0354                    ; CD4D= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; CD4D= ED 54 03    mT.
 LCD50:
                 sta $D9                      ; CD50= 85 D9       .Y
                 stx $D8                      ; CD52= 86 D8       .X
@@ -5559,7 +5575,7 @@ LCDAF:
                 sbc $0308                    ; CDB6= ED 08 03    m..
                 sta $DD                      ; CDB9= 85 DD       .]
 LCDBB:
-                ldy $034F                    ; CDBB= AC 4F 03    ,O.
+                ldy vduBytesPerCharacter                    ; CDBB= AC 4F 03    ,O.
                 dey                          ; CDBE= 88          .
 LCDBF:
                 lda ($D8),y                  ; CDBF= B1 D8       1X
@@ -5570,13 +5586,13 @@ LCDBF:
 LCDC8:
                 clc                          ; CDC8= 18          .
                 lda $D6,x                    ; CDC9= B5 D6       5V
-                adc $034F                    ; CDCB= 6D 4F 03    mO.
+                adc vduBytesPerCharacter                    ; CDCB= 6D 4F 03    mO.
                 sta $D6,x                    ; CDCE= 95 D6       .V
                 lda $D7,x                    ; CDD0= B5 D7       5W
                 adc #$00                     ; CDD2= 69 00       i.
                 bpl LCDDA                    ; CDD4= 10 04       ..
                 sec                          ; CDD6= 38          8
-                sbc $0354                    ; CDD7= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; CDD7= ED 54 03    mT.
 LCDDA:
                 sta $D7,x                    ; CDDA= 95 D7       .W
                 dex                          ; CDDC= CA          J
@@ -5599,20 +5615,20 @@ LCDE8:
                 sta $DA                      ; CDF9= 85 DA       .Z
 LCDFB:
                 lda $0358                    ; CDFB= AD 58 03    -X.
-                ldy $034F                    ; CDFE= AC 4F 03    ,O.
+                ldy vduBytesPerCharacter                    ; CDFE= AC 4F 03    ,O.
 LCE01:
                 dey                          ; CE01= 88          .
                 sta ($D6),y                  ; CE02= 91 D6       .V
                 bne LCE01                    ; CE04= D0 FB       P{
                 txa                          ; CE06= 8A          .
                 clc                          ; CE07= 18          .
-                adc $034F                    ; CE08= 6D 4F 03    mO.
+                adc vduBytesPerCharacter                    ; CE08= 6D 4F 03    mO.
                 tax                          ; CE0B= AA          *
                 lda $D7                      ; CE0C= A5 D7       %W
                 adc #$00                     ; CE0E= 69 00       i.
                 bpl LCE16                    ; CE10= 10 04       ..
                 sec                          ; CE12= 38          8
-                sbc $0354                    ; CE13= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; CE13= ED 54 03    mT.
 LCE16:
                 stx $D6                      ; CE16= 86 D6       .V
                 sta $D7                      ; CE18= 85 D7       .W
@@ -5659,7 +5675,7 @@ LCE58:
                 adc $0351                    ; CE5F= 6D 51 03    mQ.
                 tay                          ; CE62= A8          (
                 lda $0318                    ; CE63= AD 18 03    -..
-                ldx $034F                    ; CE66= AE 4F 03    .O.
+                ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
                 cpx #$10                     ; CE69= E0 10       `.
                 beq LCE70                    ; CE6B= F0 03       p.
                 bcc LCE71                    ; CE6D= 90 02       ..
@@ -5685,7 +5701,7 @@ LCE7C:
                 adc #$00                     ; CE82= 69 00       i.
                 bpl LCE8A                    ; CE84= 10 04       ..
                 sec                          ; CE86= 38          8
-                sbc $0354                    ; CE87= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; CE87= ED 54 03    mT.
 LCE8A:
                 sta $D7                      ; CE8A= 85 D7       .W
                 clc                          ; CE8C= 18          .
@@ -6004,7 +6020,7 @@ LD061:
                 dex                          ; D06D= CA          J
                 dex                          ; D06E= CA          J
                 jsr LD087                    ; D06F= 20 87 D0     .P
-                ldy $0361                    ; D072= AC 61 03    ,a.
+                ldy vduPixelsPerByteMinusOne                    ; D072= AC 61 03    ,a.
                 cpy #$03                     ; D075= C0 03       @.
                 beq LD07E                    ; D077= F0 05       p.
                 bcs LD081                    ; D079= B0 06       0.
@@ -6012,7 +6028,7 @@ LD061:
 LD07E:
                 jsr LD0BE                    ; D07E= 20 BE D0     >P
 LD081:
-                lda $0356                    ; D081= AD 56 03    -V.
+                lda vduCurrentScreenMODEGroup                    ; D081= AD 56 03    -V.
                 bne LD0BE                    ; D084= D0 38       P8
                 rts                          ; D086= 60          `
 
@@ -6058,12 +6074,12 @@ LD0C9:
                 jsr LD0E6                    ; D0D2= 20 E6 D0     fP
                 ldx #$00                     ; D0D5= A2 00       ".
                 ldy #$04                     ; D0D7= A0 04        .
-                lda $0361                    ; D0D9= AD 61 03    -a.
+                lda vduPixelsPerByteMinusOne                    ; D0D9= AD 61 03    -a.
 LD0DC:
                 dey                          ; D0DC= 88          .
                 lsr a                        ; D0DD= 4A          J
                 bne LD0DC                    ; D0DE= D0 FC       P|
-                lda $0356                    ; D0E0= AD 56 03    -V.
+                lda vduCurrentScreenMODEGroup                    ; D0E0= AD 56 03    -V.
                 beq LD0E6                    ; D0E3= F0 01       p.
                 iny                          ; D0E5= C8          H
 LD0E6:
@@ -6281,13 +6297,13 @@ LD262:
                 bne LD25F                    ; D265= D0 F8       Px
                 clc                          ; D267= 18          .
                 lda $D4                      ; D268= A5 D4       %T
-                adc $0352                    ; D26A= 6D 52 03    mR.
+                adc vduBytesPerCharacterRowLow                    ; D26A= 6D 52 03    mR.
                 sta $D4                      ; D26D= 85 D4       .T
                 lda $D5                      ; D26F= A5 D5       %U
                 adc $0353                    ; D271= 6D 53 03    mS.
                 bpl LD27A                    ; D274= 10 04       ..
                 sec                          ; D276= 38          8
-                sbc $0354                    ; D277= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; D277= ED 54 03    mT.
 LD27A:
                 sta $D5                      ; D27A= 85 D5       .U
                 ldy #$00                     ; D27C= A0 00        .
@@ -6362,20 +6378,20 @@ LD2E7:
 LD2EA:
                 sec                          ; D2EA= 38          8
                 lda $D4                      ; D2EB= A5 D4       %T
-                sbc $0352                    ; D2ED= ED 52 03    mR.
+                sbc vduBytesPerCharacterRowLow                    ; D2ED= ED 52 03    mR.
                 sta $D4                      ; D2F0= 85 D4       .T
                 lda $D5                      ; D2F2= A5 D5       %U
                 sbc $0353                    ; D2F4= ED 53 03    mS.
-                cmp $034E                    ; D2F7= CD 4E 03    MN.
+                cmp vduStartScreenAddressHighByte                    ; D2F7= CD 4E 03    MN.
                 bcs LD2FF                    ; D2FA= B0 03       0.
-                adc $0354                    ; D2FC= 6D 54 03    mT.
+                adc vduScreenSizeHighByte                    ; D2FC= 6D 54 03    mT.
 LD2FF:
                 sta $D5                      ; D2FF= 85 D5       .U
                 ldy #$07                     ; D301= A0 07        .
                 rts                          ; D303= 60          `
 
 LD304:
-                lda $0362                    ; D304= AD 62 03    -b.
+                lda vduColourMaskLeft                    ; D304= AD 62 03    -b.
                 sta $D1                      ; D307= 85 D1       .Q
                 lda $D4                      ; D309= A5 D4       %T
                 adc #$07                     ; D30B= 69 07       i.
@@ -6386,7 +6402,7 @@ LD313:
                 rts                          ; D313= 60          `
 
 LD314:
-                lda $0363                    ; D314= AD 63 03    -c.
+                lda vduColourMaskRight                    ; D314= AD 63 03    -c.
                 sta $D1                      ; D317= 85 D1       .Q
                 lda $D4                      ; D319= A5 D4       %T
                 bne LD31F                    ; D31B= D0 02       P.
@@ -6534,7 +6550,7 @@ LD3F0:
                 bne LD40E                    ; D3FA= D0 12       P.
                 sec                          ; D3FC= 38          8
                 txa                          ; D3FD= 8A          .
-                adc $0361                    ; D3FE= 6D 61 03    ma.
+                adc vduPixelsPerByteMinusOne                    ; D3FE= 6D 61 03    ma.
                 bcc LD407                    ; D401= 90 04       ..
                 inc $D9                      ; D403= E6 D9       fY
                 bpl LD40E                    ; D405= 10 07       ..
@@ -6574,7 +6590,7 @@ LD430:
                 bne LD454                    ; D440= D0 12       P.
                 sec                          ; D442= 38          8
                 txa                          ; D443= 8A          .
-                adc $0361                    ; D444= 6D 61 03    ma.
+                adc vduPixelsPerByteMinusOne                    ; D444= 6D 61 03    ma.
                 bcc LD44D                    ; D447= 90 04       ..
                 inc $D9                      ; D449= E6 D9       fY
                 bpl LD454                    ; D44B= 10 07       ..
@@ -6872,7 +6888,7 @@ LD640:
                 pha                          ; D641= 48          H
                 lsr $DB                      ; D642= 46 DB       F[
                 ror a                        ; D644= 6A          j
-                ldy $0361                    ; D645= AC 61 03    ,a.
+                ldy vduPixelsPerByteMinusOne                    ; D645= AC 61 03    ,a.
                 cpy #$03                     ; D648= C0 03       @.
                 beq LD651                    ; D64A= F0 05       p.
                 bcc LD654                    ; D64C= 90 06       ..
@@ -6898,13 +6914,13 @@ LD663:
                 bne LD65A                    ; D667= D0 F1       Pq
 LD669:
                 pla                          ; D669= 68          h
-                and $0361                    ; D66A= 2D 61 03    -a.
+                and vduPixelsPerByteMinusOne                    ; D66A= 2D 61 03    -a.
                 beq LD624                    ; D66D= F0 B5       p5
                 tax                          ; D66F= AA          *
                 lda #$00                     ; D670= A9 00       ).
 LD672:
                 asl a                        ; D672= 0A          .
-                ora $0363                    ; D673= 0D 63 03    .c.
+                ora vduColourMaskRight                    ; D673= 0D 63 03    .c.
                 dex                          ; D676= CA          J
                 bne LD672                    ; D677= D0 F9       Py
                 sta $D1                      ; D679= 85 D1       .Q
@@ -6970,7 +6986,7 @@ LD6DE:
                 lda vduStatusByte                      ; D6E1= A5 D0       %P
                 and #$30                     ; D6E3= 29 30       )0
                 bne LD70E                    ; No cursor displayed, exit
-                lda $0360                    ; D6E7= AD 60 03    -`.
+                lda vduNumberOfLogicalColoursMinusOne                    ; D6E7= AD 60 03    -`.
                 sta $D8                      ; D6EA= 85 D8       .X
                 lda $034B                    ; D6EC= AD 4B 03    -K.
                 eor #$80                     ; D6EF= 49 80       I.
@@ -7004,7 +7020,7 @@ LD716:
                 lda #$01                     ; D718= A9 01       ).
                 sta $D9                      ; D71A= 85 D9       .Y
 LD71C:
-                lda $0362                    ; D71C= AD 62 03    -b.
+                lda vduColourMaskLeft                    ; D71C= AD 62 03    -b.
                 sta $DA                      ; D71F= 85 DA       .Z
                 lda ($D6),y                  ; D721= B1 D6       1V
                 eor $0358                    ; D723= 4D 58 03    MX.
@@ -7081,7 +7097,7 @@ LD77A:
                 lda multiplyBy640Table,y                  ; D78B= B9 6D C3    9mC
                 sta $D8                      ; D78E= 85 D8       .X
                 lda multiplyBy640Table+1,y                ; D790= B9 6E C3    9nC
-                ldy $0356                    ; D793= AC 56 03    ,V.
+                ldy vduCurrentScreenMODEGroup                    ; D793= AC 56 03    ,V.
                 beq LD79B                    ; D796= F0 03       p.
                 lsr $D8                      ; D798= 46 D8       FX
                 ror a                        ; D79A= 6A          j
@@ -7095,13 +7111,13 @@ LD79B:
                 sta $D8                      ; D7AA= 85 D8       .X
                 lda $0300,x                  ; D7AC= BD 00 03    =..
                 pha                          ; D7AF= 48          H
-                and $0361                    ; D7B0= 2D 61 03    -a.
-                adc $0361                    ; D7B3= 6D 61 03    ma.
+                and vduPixelsPerByteMinusOne                    ; D7B0= 2D 61 03    -a.
+                adc vduPixelsPerByteMinusOne                    ; D7B3= 6D 61 03    ma.
                 tay                          ; D7B6= A8          (
-                lda LC3C2-1,y                ; D7B7= B9 C1 C3    9AC
+                lda sixteenColourMODEMaskTable-1,y                ; D7B7= B9 C1 C3    9AC
                 sta $D1                      ; D7BA= 85 D1       .Q
                 pla                          ; D7BC= 68          h
-                ldy $0361                    ; D7BD= AC 61 03    ,a.
+                ldy vduPixelsPerByteMinusOne                    ; D7BD= AC 61 03    ,a.
                 cpy #$03                     ; D7C0= C0 03       @.
                 beq LD7C9                    ; D7C2= F0 05       p.
                 bcs LD7CC                    ; D7C4= B0 06       0.
@@ -7119,7 +7135,7 @@ LD7CC:
                 adc $D5                      ; D7D5= 65 D5       eU
                 bpl LD7DD                    ; D7D7= 10 04       ..
                 sec                          ; D7D9= 38          8
-                sbc $0354                    ; D7DA= ED 54 03    mT.
+                sbc vduScreenSizeHighByte                    ; D7DA= ED 54 03    mT.
 LD7DD:
                 sta $D5                      ; D7DD= 85 D5       .U
                 ldy $031A                    ; D7DF= AC 1A 03    ,..
@@ -7185,8 +7201,8 @@ osbyte85:
                 txa                          ; D837= 8A          .
                 and #$07                     ; D838= 29 07       ).
                 tay                          ; D83A= A8          (
-                ldx LC3FB,y                  ; D83B= BE FB C3    >{C
-                lda LC40B,x                  ; D83E= BD 0B C4    =.D
+                ldx screenDisplayMemoryIndexTable,y                  ; D83B= BE FB C3    >{C
+                lda screenMemoryStartHigh,x                  ; D83E= BD 0B C4    =.D
 LD841:
                 ldx #$00                     ; D841= A2 00       ".
                 tay                          ; D843= A8          (
@@ -7659,22 +7675,21 @@ LDAD7:
                 jmp $0400                    ; Enter Tube code to start language
 
 ;-------------------------------------------------------------------------
-
 ; Convert MODE number into table offset
 ; On entry, A=mode
 ; On exit,  X=validated mode number 0-6
 ;           A=validated mode number * 8
 getNormalisedMODE:
-                and #$07                     ; DADA= 29 07       ).
-                cmp #$07                     ; DADC= C9 07       I.
-                bcc LDAE2                    ; DADE= 90 02       ..
-                lda #$06                     ; DAE0= A9 06       ).
+                and #$07                     ; Isolate the mode in lowe 3 bits 	; DADA= 29 07       ).
+                cmp #$07                     ; Compare with 7 					; DADC= C9 07       I.
+                bcc LDAE2                    ; If mode is greater than or equal to 7 then 	; DADE= 90 02       ..
+                lda #$06                     ; Set mode in A to 6 				; DAE0= A9 06       ).
 LDAE2:
-                tax                          ; DAE2= AA          *
-                asl a                        ; DAE3= 0A          .
-                asl a                        ; DAE4= 0A          .
-                asl a                        ; DAE5= 0A          .
-                rts                          ; DAE6= 60          `
+                tax                          ; Move mode to X 					; DAE2= AA          *
+                asl a                        ; Multiply by 2 					; DAE3= 0A          .
+                asl a                        ; Multiply by 4 					; DAE4= 0A          .
+                asl a                        ; Multiply by 8 					; DAE5= 0A          .
+                rts                          ; Done 							; DAE6= 60          `
 
 ;-------------------------------------------------------------------------
 
