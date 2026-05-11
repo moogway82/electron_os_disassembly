@@ -3767,13 +3767,13 @@ vduEntry: .macro routine,n,lsb
                 .endmacro
 
 vduRoutinesTable: .macro lsb
-                .vduEntry LC48B,0,\lsb ; VDU 0
-                .vduEntry LC4B5,1,\lsb ; VDU 1
-                .vduEntry LC51C,0,\lsb ; VDU 2
-                .vduEntry LC527,0,\lsb ; VDU 3
-                .vduEntry LC52E,0,\lsb ; VDU 4
+                .vduEntry vdu0EntryPoint,0,\lsb ; VDU 0
+                .vduEntry vdu1EntryPoint,1,\lsb ; VDU 1
+                .vduEntry vdu2EntryPoint,0,\lsb ; VDU 2
+                .vduEntry vdu3EntryPoint,0,\lsb ; VDU 3
+                .vduEntry vdu4EntryPoint,0,\lsb ; VDU 4
                 .vduEntry LC535,0,\lsb ; VDU 5
-                .vduEntry LC48B,0,\lsb ; VDU 6
+                .vduEntry vdu0EntryPoint,0,\lsb ; VDU 6
                 .vduEntry LE64B,0,\lsb ; VDU 7
                 .vduEntry LC53E,0,\lsb ; VDU 8
                 .vduEntry vdu9EntryPoint,0,\lsb ; VDU 9
@@ -3787,14 +3787,14 @@ vduRoutinesTable: .macro lsb
                 .vduEntry LC7A5,1,\lsb ; VDU 17
                 .vduEntry LC7C4,2,\lsb ; VDU 18
                 .vduEntry LC841,5,\lsb ; VDU 19
-                .vduEntry LC7F6,0,\lsb ; VDU 20
+                .vduEntry vdu20EntryPoint,0,\lsb ; VDU 20
                 .vduEntry LC521,0,\lsb ; VDU 21
                 .vduEntry vdu22EntryPoint,1,\lsb ; VDU 22
                 .vduEntry LC8F2,9,\lsb ; VDU 23
                 .vduEntry LCA38,8,\lsb ; VDU 24
                 .vduEntry LC986,5,\lsb ; VDU 25
-                .vduEntry LCA02,0,\lsb ; VDU 26
-                .vduEntry LC48B,0,\lsb ; VDU 27
+                .vduEntry vdu26EntryPoint,0,\lsb ; VDU 26
+                .vduEntry vdu0EntryPoint,0,\lsb ; VDU 27
                 .vduEntry LC674,4,\lsb ; VDU 28
                 .vduEntry LCAA1,4,\lsb ; VDU 29
                 .vduEntry LC716,0,\lsb ; VDU 30
@@ -4086,7 +4086,15 @@ readVDUEntryPointAddressAndParameters:
                 bit vduStatusByte
                 bvs LC4A9
                 clc
-LC48B:
+
+; ***************************************************************************************
+;
+;   VDU 0    Empty handlers
+;
+;   VDU 0  - Does nothing
+;
+; ***************************************************************************************
+vdu0EntryPoint:
                 rts
 
 vduParametersAreOutstanding:
@@ -4115,11 +4123,17 @@ LC4AE:
                 ldy $035E
                 cpy #$C4
                 bne LC4AC
-LC4B5:
+
+; ***************************************************************************************
+;
+;   VDU 1       Send next byte to printer only
+;
+; ***************************************************************************************
+vdu1EntryPoint:
                 tax
                 lda vduStatusByte
                 lsr a
-                bcc LC48B
+                bcc vdu0EntryPoint
                 txa
                 jmp LDEAE
 
@@ -4143,7 +4157,7 @@ exitVDUCHR:
                 lsr a
 LC4DB:
                 bit vduStatusByte
-                bvc LC48B
+                bvc vdu0EntryPoint
 LC4DF:
                 jsr setUpWriteCursor
 exchangeTextCursorAndInputCursorValues:
@@ -4187,7 +4201,13 @@ LC513:
                 sty $0269                    ; C515= 8C 69 02    .i.
                 lda #$04                     ; C518= A9 04       ).
                 bne LC523                    ; C51A= D0 07       P.
-LC51C:
+
+; ***************************************************************************************
+;
+;   VDU 2     Printer On
+;
+; ***************************************************************************************
+vdu2EntryPoint:
                 jsr LC50A                    ; C51C= 20 0A C5     .E
                 lda #$94                     ; C51F= A9 94       ).
 LC521:
@@ -4195,12 +4215,28 @@ LC521:
 LC523:
                 ora $D0                      ; C523= 05 D0       .P
                 bne LC532                    ; C525= D0 0B       P.
-LC527:
+
+; ***************************************************************************************
+;
+;   VDU 3     Printer off
+;
+; ***************************************************************************************
+vdu3EntryPoint:
                 jsr LC50A                    ; C527= 20 0A C5     .E
                 lda #$0A                     ; C52A= A9 0A       ).
 LC52C:
                 eor #$2F                     ; C52C= 49 2F       I/
-LC52E:
+
+; ***************************************************************************************
+;
+;   VDU 4       Select text cursor
+;
+; At all times either the text cursor is active or the graphics cursor is active
+; Characters are either drawn normally in text cells (at the text cursor) or at any pixel
+; position (the graphics cursor)
+;
+; ***************************************************************************************
+vdu4EntryPoint:
                 eor #$DB                     ; C52E= 49 DB       I[
 LC530:
                 and $D0                      ; C530= 25 D0       %P
@@ -4611,7 +4647,12 @@ LC7EF:
                 sta $0359,y                  ; C7F2= 99 59 03    .Y.
                 rts                          ; C7F5= 60          `
 
-LC7F6:
+; ***************************************************************************************
+;
+;   VDU 20      Restore default colours
+;
+; ***************************************************************************************
+vdu20EntryPoint:
                 lda #$00                     ; C7F6= A9 00       ).
                 sta $0322                    ; C7F8= 8D 22 03    .".
                 lda vduNumberOfLogicalColoursMinusOne                    ; C7FB= AD 60 03    -`.
@@ -4947,7 +4988,12 @@ LC9F0:
                 pla                          ; CA00= 68          h
                 rts                          ; CA01= 60          `
 
-LCA02:
+; ***************************************************************************************
+;
+;   VDU 26      Reset to default windows
+;
+; ***************************************************************************************
+vdu26EntryPoint:
                 lda #$00                     ; CA02= A9 00       ).
                 ldx #$2C                     ; CA04= A2 2C       ",
 LCA06:
@@ -5055,7 +5101,7 @@ LCAC9:
                 adc vduBytesPerCharacterRowLow                    ; CACC= 6D 52 03    mR.
                 tax                          ; CACF= AA          *
                 pla                          ; CAD0= 68          h
-                adc $0353                    ; CAD1= 6D 53 03    mS.
+                adc vduBytesPerCharacterRowHigh                    ; CAD1= 6D 53 03    mS.
                 rts                          ; CAD4= 60          `
 
 LCAD5:
@@ -5146,49 +5192,49 @@ setMODE:
                 sta miscellaneousControlRegister            ; CB46= 8D 07 FE    ..~
                 .endif
 
-                plp                          ; CB49= 28          (
-                lda numberOfColoursMinusOneInMODETable,x    ; Look up the no. colours for mode, store in A              ; CB4A= BD CF C3    =OC
+                plp                          																; CB49= 28          (
+                lda numberOfColoursMinusOneInMODETable,x    ; Look up the no. colours for mode, store in A  ; CB4A= BD CF C3    =OC
                 sta vduNumberOfLogicalColoursMinusOne       ; Save that in VDU Var             				; CB4D= 8D 60 03    .`.
                 lda bytesPerCharacter,x                  	; Look up no. bytes per character 				; CB50= BD BB C3    =;C
                 sta vduBytesPerCharacter                    ; Save it in VDU Var 							; CB53= 8D 4F 03    .O.
                 lda pixelsPerByteMinusOneInMODETable,x      ; Look up pixels per byte 			            ; CB56= BD F5 C3    =uC
                 sta vduPixelsPerByteMinusOne                ; Save in VDU Var 							    ; CB59= 8D 61 03    .a.
-                bne LCB60                    ; CB5C= D0 02       P.
-                lda #$07                     ; CB5E= A9 07       ).
+                bne LCB60                    																; CB5C= D0 02       P.
+                lda #$07                     																; CB5E= A9 07       ).
 LCB60:
-                asl a                        ; CB60= 0A          .
-                tay                          ; CB61= A8          (
+                asl a                        																; CB60= 0A          .
+                tay                          																; CB61= A8          (
                 lda sixteenColourMODEMaskTable-1,y          ; mask table        							; CB62= B9 C1 C3    9AC
                 sta vduColourMaskRight                    	; store as colour mask right 					; CB65= 8D 63 03    .c.
 LCB68:
                 asl a                        				; shift A left 									; CB68= 0A          .
                 bpl LCB68                    				; until the top bit becomes set 				; CB69= 10 FD       .}
                 sta vduColourMaskLeft                    	; store as colour mask left 					; CB6B= 8D 62 03    .b.
-                ldy screenDisplayMemoryIndexTable,x                  ; CB6E= BC FB C3    <{C
-                sty vduCurrentScreenMODEGroup                    ; CB71= 8C 56 03    .V.
-                lda screenMemorySizeInBytesHigh,y                  ; CB74= B9 07 C4    9.D
-                sta vduScreenSizeHighByte                    ; CB77= 8D 54 03    .T.
-                lda screenMemoryStartHigh,y                  ; CB7A= B9 0B C4    9.D
-                sta vduStartScreenAddressHighByte                    ; CB7D= 8D 4E 03    .N.
-                tya                          ; CB80= 98          .
-                lsr a                        ; CB81= 4A          J
-                eor #$01                     ; CB82= 49 01       I.
-                tax                          ; CB84= AA          *
-                lda bytesPerRowLow,x                  ; CB85= BD 0F C4    =.D
-                sta vduBytesPerCharacterRowLow                    ; CB88= 8D 52 03    .R.
-                inx                          ; CB8B= E8          h
-                stx $0353                    ; CB8C= 8E 53 03    .S.
-                lda #$43                     ; CB8F= A9 43       )C
-                jsr LC530                    ; CB91= 20 30 C5     0E
-                jsr LC7F6                    ; CB94= 20 F6 C7     vG
-                jsr LCA02                    ; CB97= 20 02 CA     .J
-                jsr LC976                    ; CB9A= 20 76 C9     vI
+                ldy screenDisplayMemoryIndexTable,x                  										; CB6E= BC FB C3    <{C
+                sty vduCurrentScreenMODEGroup                    											; CB71= 8C 56 03    .V.
+                lda screenMemorySizeInBytesHigh,y                  											; CB74= B9 07 C4    9.D
+                sta vduScreenSizeHighByte                    												; CB77= 8D 54 03    .T.
+                lda screenMemoryStartHigh,y                  												; CB7A= B9 0B C4    9.D
+                sta vduStartScreenAddressHighByte                    										; CB7D= 8D 4E 03    .N.
+                tya                         																; CB80= 98          .
+                lsr a                        																; CB81= 4A          J
+                eor #$01                    																; CB82= 49 01       I.
+                tax                          																; CB84= AA          *
+                lda bytesPerRowLow,x                  														; CB85= BD 0F C4    =.D
+                sta vduBytesPerCharacterRowLow               ; store bytes per character row 		    	; CB88= 8D 52 03    .R.
+                inx                          																; CB8B= E8          h
+                stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
+                lda #$43                     																; CB8F= A9 43       )C
+                jsr LC530                    																; CB91= 20 30 C5     0E
+                jsr vdu20EntryPoint                    		 ; Set Default screen colours					; CB94= 20 F6 C7     vG
+                jsr vdu26EntryPoint                    														; CB97= 20 02 CA     .J
+                jsr LC976                    																; CB9A= 20 76 C9     vI
 LCB9D:
-                ldx #$00                     ; CB9D= A2 00       ".
-                lda vduStartScreenAddressHighByte                    ; CB9F= AD 4E 03    -N.
-                jsr LC9F0                    ; CBA2= 20 F0 C9     pI
-                jsr LC561                    ; CBA5= 20 61 C5     aE
-                jsr LCC03                    ; CBA8= 20 03 CC     .L
+                ldx #$00                     																; CB9D= A2 00       ".
+                lda vduStartScreenAddressHighByte                    										; CB9F= AD 4E 03    -N.
+                jsr LC9F0                    																; CBA2= 20 F0 C9     pI
+                jsr LC561                    																; CBA5= 20 61 C5     aE
+                jsr LCC03                    																; CBA8= 20 03 CC     .L
                 lda #$00                     ; CBAB= A9 00       ).
                 sta $0269                    ; CBAD= 8D 69 02    .i.
                 sta $0318                    ; CBB0= 8D 18 03    ...
@@ -5352,7 +5398,7 @@ LCC4F:
                 sbc vduBytesPerCharacterRowLow                    ; CC52= ED 52 03    mR.
                 tax                          ; CC55= AA          *
                 pla                          ; CC56= 68          h
-                sbc $0353                    ; CC57= ED 53 03    mS.
+                sbc vduBytesPerCharacterRowHigh                    ; CC57= ED 53 03    mS.
                 cmp vduStartScreenAddressHighByte                    ; CC5A= CD 4E 03    MN.
 LCC5D:
                 rts                          ; CC5D= 60          `
@@ -5663,7 +5709,7 @@ LCE42:
                 lda multiplyBy640Table,y                  ; CE47= B9 6D C3    9mC
                 sta $D7                      ; CE4A= 85 D7       .W
                 lda multiplyBy640Table+1,y                  ; CE4C= B9 6E C3    9nC
-                ldy $0353                    ; CE4F= AC 53 03    ,S.
+                ldy vduBytesPerCharacterRowHigh                    ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
                 lsr $D7                      ; CE55= 46 D7       FW
@@ -6300,7 +6346,7 @@ LD262:
                 adc vduBytesPerCharacterRowLow                    ; D26A= 6D 52 03    mR.
                 sta $D4                      ; D26D= 85 D4       .T
                 lda $D5                      ; D26F= A5 D5       %U
-                adc $0353                    ; D271= 6D 53 03    mS.
+                adc vduBytesPerCharacterRowHigh                    ; D271= 6D 53 03    mS.
                 bpl LD27A                    ; D274= 10 04       ..
                 sec                          ; D276= 38          8
                 sbc vduScreenSizeHighByte                    ; D277= ED 54 03    mT.
@@ -6381,7 +6427,7 @@ LD2EA:
                 sbc vduBytesPerCharacterRowLow                    ; D2ED= ED 52 03    mR.
                 sta $D4                      ; D2F0= 85 D4       .T
                 lda $D5                      ; D2F2= A5 D5       %U
-                sbc $0353                    ; D2F4= ED 53 03    mS.
+                sbc vduBytesPerCharacterRowHigh                    ; D2F4= ED 53 03    mS.
                 cmp vduStartScreenAddressHighByte                    ; D2F7= CD 4E 03    MN.
                 bcs LD2FF                    ; D2FA= B0 03       0.
                 adc vduScreenSizeHighByte                    ; D2FC= 6D 54 03    mT.
