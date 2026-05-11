@@ -3772,15 +3772,15 @@ vduRoutinesTable: .macro lsb
                 .vduEntry vdu2EntryPoint,0,\lsb ; VDU 2
                 .vduEntry vdu3EntryPoint,0,\lsb ; VDU 3
                 .vduEntry vdu4EntryPoint,0,\lsb ; VDU 4
-                .vduEntry LC535,0,\lsb ; VDU 5
-                .vduEntry vdu0EntryPoint,0,\lsb ; VDU 6
-                .vduEntry LE64B,0,\lsb ; VDU 7
-                .vduEntry LC53E,0,\lsb ; VDU 8
+                .vduEntry vdu5EntryPoint,0,\lsb ; VDU 5
+                .vduEntry vdu6EntryPoint,0,\lsb ; VDU 6
+                .vduEntry vdu7EntryPoint,0,\lsb ; VDU 7
+                .vduEntry vdu8EntryPoint,0,\lsb ; VDU 8
                 .vduEntry vdu9EntryPoint,0,\lsb ; VDU 9
                 .vduEntry vdu10EntryPoint,0,\lsb ; VDU 10
-                .vduEntry LC5D9,0,\lsb ; VDU 11
-                .vduEntry LC6F6,0,\lsb ; VDU 12
-                .vduEntry LC75E,0,\lsb ; VDU 13
+                .vduEntry vdu11EntryPoint,0,\lsb ; VDU 11
+                .vduEntry vdu12EntryPoint,0,\lsb ; VDU 12
+                .vduEntry vdu13EntryPoint,0,\lsb ; VDU 13
                 .vduEntry LC513,0,\lsb ; VDU 14
                 .vduEntry LC52C,0,\lsb ; VDU 15
                 .vduEntry LC76C,0,\lsb ; VDU 16
@@ -3794,7 +3794,7 @@ vduRoutinesTable: .macro lsb
                 .vduEntry LCA38,8,\lsb ; VDU 24
                 .vduEntry LC986,5,\lsb ; VDU 25
                 .vduEntry vdu26EntryPoint,0,\lsb ; VDU 26
-                .vduEntry vdu0EntryPoint,0,\lsb ; VDU 27
+                .vduEntry vdu27EntryPoint,0,\lsb ; VDU 27
                 .vduEntry LC674,4,\lsb ; VDU 28
                 .vduEntry LCAA1,4,\lsb ; VDU 29
                 .vduEntry LC716,0,\lsb ; VDU 30
@@ -4089,12 +4089,16 @@ readVDUEntryPointAddressAndParameters:
 
 ; ***************************************************************************************
 ;
-;   VDU 0    Empty handlers
+;   VDU 0 / 6 / 27      Empty handlers
 ;
 ;   VDU 0  - Does nothing
+;   VDU 6  - Enable VDU drivers (re-enabling is handled prior to here, see .checkForVDUReenable)
+;   VDU 27 - ESCAPE code, does nothing
 ;
 ; ***************************************************************************************
 vdu0EntryPoint:
+vdu6EntryPoint
+vdu27EntryPoint
                 rts
 
 vduParametersAreOutstanding:
@@ -4245,12 +4249,23 @@ LC532:
 LC534:
                 rts                          ; C534= 60          `
 
-LC535:
+; ***************************************************************************************
+;
+;   VDU 5       Select graphics cursor
+;
+; ***************************************************************************************
+vdu5EntryPoint:
                 lda vduPixelsPerByteMinusOne                    ; C535= AD 61 03    -a.
                 beq LC534                    ; C538= F0 FA       pz
                 lda #$20                     ; C53A= A9 20       )
                 bne LC523                    ; C53C= D0 E5       Pe
-LC53E:
+
+; ***************************************************************************************
+;
+;   VDU 8       Cursor left (.charBACKSPACE)
+;
+; ***************************************************************************************
+vdu8EntryPoint:
                 jsr testVD5State                    ; C53E= 20 05 C5     .E
                 bne LC59D                    ; C541= D0 5A       PZ
                 dec $0318                    ; C543= CE 18 03    N..
@@ -4334,12 +4349,23 @@ LC5C8:
 LC5D6:
                 jmp LD0C9                    ; C5D6= 4C C9 D0    LIP
 
-LC5D9:
+; ***************************************************************************************
+;
+;   VDU 11       Cursor up
+;
+; ***************************************************************************************
+vdu11EntryPoint:
                 jsr testVD5State                    ; C5D9= 20 05 C5     .E
                 beq LC572                    ; C5DC= F0 94       p.
 LC5DE:
                 ldx #$02                     ; C5DE= A2 02       ".
                 bne LC630                    ; C5E0= D0 4E       PN
+
+; ***************************************************************************************
+;
+;   VDU 9        Cursor right
+;
+; ***************************************************************************************
 vdu9EntryPoint:
                 lda vduStatusByte                      ; C5E2= A5 D0       %P
                 and #$20                     ; C5E4= 29 20       )
@@ -4412,6 +4438,11 @@ LC659:
 LC667:
                 jmp LD0C9                    ; C667= 4C C9 D0    LIP
 
+; ***************************************************************************************
+;
+;   VDU 10       Cursor down
+;
+; ***************************************************************************************
 vdu10EntryPoint:
                 jsr testVD5State                    ; C66A= 20 05 C5     .E
                 beq LC606                    ; C66D= F0 97       p.
@@ -4504,7 +4535,12 @@ LC6ED:
 LC6F5:
                 rts                          ; C6F5= 60          `
 
-LC6F6:
+; ***************************************************************************************
+;
+;   VDU 12      Clear text or graphics window
+;
+; ***************************************************************************************
+vdu12EntryPoint:
                 jsr testVD5State                    ; C6F6= 20 05 C5     .E
                 bne LC769                    ; C6F9= D0 6E       Pn
                 lda vduStatusByte                      ; C6FB= A5 D0       %P
@@ -4560,7 +4596,12 @@ LC754:
 LC75B:
                 jmp LD0C9                    ; C75B= 4C C9 D0    LIP
 
-LC75E:
+; ***************************************************************************************
+;
+;   VDU 13      Carriage Return (.charRETURN)
+;
+; ***************************************************************************************
+vdu13EntryPoint:
                 jsr testVD5State                    ; C75E= 20 05 C5     .E
                 bne LC754                    ; C761= D0 F1       Pq
                 jsr LCDAA                    ; C763= 20 AA CD     *M
@@ -5079,7 +5120,7 @@ LCAA1:
                 jmp LD0C9                    ; CAA8= 4C C9 D0    LIP
 
 LCAAB:
-                jsr LC53E                    ; CAAB= 20 3E C5     >E
+                jsr vdu8EntryPoint                    ; CAAB= 20 3E C5     >E
                 jsr testVD5State                    ; CAAE= 20 05 C5     .E
                 bne LCABC                    ; CAB1= D0 09       P.
                 sta $DC                      ; CAB3= 85 DC       .\
@@ -5225,7 +5266,7 @@ LCB68:
                 inx                          																; CB8B= E8          h
                 stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
                 lda #$43                     																; CB8F= A9 43       )C
-                jsr LC530                    																; CB91= 20 30 C5     0E
+                jsr LC530                    				 ; Inside VDU 4, Select  text cursor			; CB91= 20 30 C5     0E
                 jsr vdu20EntryPoint                    		 ; Set Default screen colours					; CB94= 20 F6 C7     vG
                 jsr vdu26EntryPoint                    														; CB97= 20 02 CA     .J
                 jsr LC976                    																; CB9A= 20 76 C9     vI
@@ -8917,7 +8958,7 @@ LE2C5:
                 rts                          ; E2DF= 60          `
 
 LE2E0:
-                jsr LE64B                    ; E2E0= 20 4B E6     Kf
+                jsr vdu7EntryPoint                    ; E2E0= 20 4B E6     Kf
                 pla                          ; E2E3= 68          h
                 tax                          ; E2E4= AA          *
 LE2E5:
@@ -9534,7 +9575,23 @@ osbyte75:
 LE64A:
                 rts                          ; E64A= 60          `
 
-LE64B:
+; ***************************************************************************************
+;
+; VDU 7 (.charBELL)
+;
+; See beep.mp3
+; Generates a short tone.
+;
+; By default this plays a Treble C as a square wave for 0.3 seconds on channel 3. The
+; frequency is as close as the sound chip can get to Treble C. It produces a 523.013Hz tone
+; compared to the theoretical ideal 523.251Hz, and so is very close to the ideal pitch.
+;
+; The 523.013Hz figure for the frequency achieved takes into account that the OS changes the
+; pitch slightly depending on the channel number (see .soundPitchOffsetByChannelTable). If
+; it were played on channel 1 or 2, the frequency would not be as close to Treble C.
+;
+; ***************************************************************************************
+vdu7EntryPoint:
                 lda $0262                    ; E64B= AD 62 02    -b.
                 bne LE64A                    ; E64E= D0 FA       Pz
                 lda $026B                    ; E650= AD 6B 02    -k.
