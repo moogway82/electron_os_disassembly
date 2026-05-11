@@ -3781,12 +3781,12 @@ vduRoutinesTable: .macro lsb
                 .vduEntry vdu11EntryPoint,0,\lsb ; VDU 11
                 .vduEntry vdu12EntryPoint,0,\lsb ; VDU 12
                 .vduEntry vdu13EntryPoint,0,\lsb ; VDU 13
-                .vduEntry LC513,0,\lsb ; VDU 14
-                .vduEntry LC52C,0,\lsb ; VDU 15
-                .vduEntry LC76C,0,\lsb ; VDU 16
-                .vduEntry LC7A5,1,\lsb ; VDU 17
-                .vduEntry LC7C4,2,\lsb ; VDU 18
-                .vduEntry LC841,5,\lsb ; VDU 19
+                .vduEntry vdu14EntryPoint,0,\lsb ; VDU 14
+                .vduEntry vdu15EntryPoint,0,\lsb ; VDU 15
+                .vduEntry vdu16EntryPoint,0,\lsb ; VDU 16
+                .vduEntry vdu17EntryPoint,1,\lsb ; VDU 17
+                .vduEntry vdu18EntryPoint,2,\lsb ; VDU 18
+                .vduEntry vdu19EntryPoint,5,\lsb ; VDU 19
                 .vduEntry vdu20EntryPoint,0,\lsb ; VDU 20
                 .vduEntry LC521,0,\lsb ; VDU 21
                 .vduEntry vdu22EntryPoint,1,\lsb ; VDU 22
@@ -4200,7 +4200,12 @@ LC50A:
                 jsr LDEFB                    ; C50D= 20 FB DE     {^
                 jmp LD6DE                    ; C510= 4C DE D6    L^V
 
-LC513:
+; ***************************************************************************************
+;
+;   VDU 14    Set paged mode
+;
+; ***************************************************************************************
+vdu14EntryPoint:
                 ldy #$00                     ; C513= A0 00        .
                 sty $0269                    ; C515= 8C 69 02    .i.
                 lda #$04                     ; C518= A9 04       ).
@@ -4228,8 +4233,18 @@ LC523:
 vdu3EntryPoint:
                 jsr LC50A                    ; C527= 20 0A C5     .E
                 lda #$0A                     ; C52A= A9 0A       ).
-LC52C:
-                eor #$2F                     ; C52C= 49 2F       I/
+
+; ***************************************************************************************
+;
+;   VDU 15    Paged mode off
+;
+; On Entry:
+;       A = 15  paged mode off
+;       A = 10  printer off
+;
+; ***************************************************************************************
+vdu15EntryPoint:
+                eor #$2F                      ; Falls through to vdu4, hmmm 		; C52C= 49 2F       I/
 
 ; ***************************************************************************************
 ;
@@ -4609,7 +4624,13 @@ vdu13EntryPoint:
 
 LC769:
                 jsr LC74D                    ; C769= 20 4D C7     MG
-LC76C:
+
+; ***************************************************************************************
+;
+;   VDU 16      Clear graphics window
+;
+; ***************************************************************************************
+vdu16EntryPoint:
                 lda vduPixelsPerByteMinusOne                    ; C76C= AD 61 03    -a.
                 beq LC7A4                    ; C76F= F0 33       p3
                 ldx $035A                    ; C771= AE 5A 03    .Z.
@@ -4638,7 +4659,17 @@ LC79C:
 LC7A4:
                 rts                          ; C7A4= 60          `
 
-LC7A5:
+
+; ***************************************************************************************
+;
+;   VDU 17      Define text colour
+;
+; The parameter is the logical colour to use as the current text foreground colour. If the
+; top bit is set, then the current text background is changed. This is the equivalent of
+; BASIC's COLOUR command.
+;
+; ***************************************************************************************
+vdu17EntryPoint:
                 tay                          ; C7A5= A8          (
                 bpl LC7BB                    ; C7A6= 10 13       ..
                 and vduNumberOfLogicalColoursMinusOne                    ; C7A8= 2D 60 03    -`.
@@ -4656,9 +4687,34 @@ LC7BB:
                 beq LC7C6                    ; C7BD= F0 07       p.
 LC7BF:
                 pha                          ; C7BF= 48          H
-                jsr LC7A5                    ; C7C0= 20 A5 C7     %G
+                jsr vdu17EntryPoint                    ; C7C0= 20 A5 C7     %G
                 pla                          ; C7C3= 68          h
-LC7C4:
+
+
+; ***************************************************************************************
+;
+;   VDU 18      Define graphics colour
+;
+; This sets the current graphics foreground or background colour. It is the equivalent of
+; BASIC's GCOL command.
+;
+; The first parameter is the GCOL mode: 0=Normal, 1=OR, 2=AND, 3=EOR, 4=Invert
+;
+; This signifies how to modify the colour of pixels that will be drawn in the future. This
+; can depend on both the current graphics colour and the colour of the current pixel already
+; on screen.
+;
+; The second parameter:
+;
+;   bits 0-6 is the logical colour to use.
+;   bit 7    set indicates that the current background colour should be set, otherwise
+;            the current foreground colour is set.
+;
+; ***************************************************************************************
+vdu18ParameterGCOLNumber           = vduQueueEndByte-1 
+vdu18ParameterLogicalColour        = vduQueueEndByte   
+
+vdu18EntryPoint:
                 ldy #$02                     ; C7C4= A0 02        .
 LC7C6:
                 tax                          ; C7C6= AA          *
@@ -4684,7 +4740,7 @@ LC7CA:
                 rts                          ; C7EE= 60          `
 
 LC7EF:
-                lda $0322                    ; C7EF= AD 22 03    -".
+                lda vdu18ParameterGCOLNumber                   ; C7EF= AD 22 03    -".
                 sta $0359,y                  ; C7F2= 99 59 03    .Y.
                 rts                          ; C7F5= 60          `
 
@@ -4702,25 +4758,25 @@ vdu20EntryPoint:
                 lda #$80                     ; C803= A9 80       ).
                 jsr LC7BF                    ; C805= 20 BF C7     ?G
                 ldx vduNumberOfLogicalColoursMinusOne                    ; C808= AE 60 03    .`.
-                stx $031F                    ; C80B= 8E 1F 03    ...
+                stx vdu19ParameterLogicalColour                    ; C80B= 8E 1F 03    ...
                 cpx #$03                     ; C80E= E0 03       `.
                 beq LC823                    ; C810= F0 11       p.
                 bcc LC834                    ; C812= 90 20       .
-                stx $0320                    ; C814= 8E 20 03    . .
+                stx vdu19ParameterPhysicalColour                    ; C814= 8E 20 03    . .
 LC817:
-                jsr LC841                    ; C817= 20 41 C8     AH
-                dec $0320                    ; C81A= CE 20 03    N .
-                dec $031F                    ; C81D= CE 1F 03    N..
+                jsr vdu19EntryPoint                    ; C817= 20 41 C8     AH
+                dec vdu19ParameterPhysicalColour                    ; C81A= CE 20 03    N .
+                dec vdu19ParameterLogicalColour                    ; C81D= CE 1F 03    N..
                 bpl LC817                    ; C820= 10 F5       .u
                 rts                          ; C822= 60          `
 
 LC823:
                 ldx #$07                     ; C823= A2 07       ".
-                stx $0320                    ; C825= 8E 20 03    . .
+                stx vdu19ParameterPhysicalColour                    ; C825= 8E 20 03    . .
 LC828:
-                jsr LC841                    ; C828= 20 41 C8     AH
-                lsr $0320                    ; C82B= 4E 20 03    N .
-                dec $031F                    ; C82E= CE 1F 03    N..
+                jsr vdu19EntryPoint                    ; C828= 20 41 C8     AH
+                lsr vdu19ParameterPhysicalColour                    ; C82B= 4E 20 03    N .
+                dec vdu19ParameterLogicalColour                    ; C82E= CE 1F 03    N..
                 bpl LC828                    ; C831= 10 F5       .u
                 rts                          ; C833= 60          `
 
@@ -4728,12 +4784,48 @@ LC834:
                 ldx #$07                     ; C834= A2 07       ".
                 jsr LC83E                    ; C836= 20 3E C8     >H
                 ldx #$00                     ; C839= A2 00       ".
-                stx $031F                    ; C83B= 8E 1F 03    ...
+                stx vdu19ParameterLogicalColour                    ; C83B= 8E 1F 03    ...
 LC83E:
-                stx $0320                    ; C83E= 8E 20 03    . .
-LC841:
-                lda $0320                    ; C841= AD 20 03    - .
-                ldx $031F                    ; C844= AE 1F 03    ...
+                stx vdu19ParameterPhysicalColour                    ; C83E= 8E 20 03    . .
+
+; ***************************************************************************************
+;
+;   VDU 19      Write palette
+;
+; Map a logical colour to a physical colour
+;
+;               VDU 19,logical colour,physics colour,0,0,0
+;
+; Logical colours are numbers stored in memory to represent a colour. Logical colours are
+; in the range 0-15.
+;
+; Physical colours are numbers that represent actual colours:
+;
+;                 0 = black             8 = flashing black-white
+;                 1 = red               9 = flashing red-cyan
+;                 2 = green            10 = flashing green-magenta
+;                 3 = yellow           11 = flashing yellow-blue
+;                 4 = blue             12 = flashing blue-yellow
+;                 5 = magenta          13 = flashing magenta-green
+;                 6 = cyan             14 = flashing cyan-red
+;                 7 = white            15 = flashing white-black
+;
+; The palette defines which physical colour is displayed for each logical colour.
+; The Video ULA hardware stores and manages this palette information.
+;
+; Flashing colours
+; ----------------
+; The OS (in the vertical sync interrupt) updates timers to know when to change the current
+; appearance of flashing colours. When it's time, the OS signals the VideoULA to flip the
+; flashing bit, thereby changing the current appearance.
+;
+; ***************************************************************************************
+vdu19ParameterLogicalColour  = $031F
+vdu19ParameterPhysicalColour = $0320
+
+vdu19EntryPoint:
+                lda vdu19ParameterPhysicalColour                    ; C841= AD 20 03    - .
+                ldx vdu19ParameterLogicalColour                    ; C844= AE 1F 03    ...
 LC847:
                 clc                          ; C847= 18          .
 LC848:
