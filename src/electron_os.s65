@@ -3839,7 +3839,7 @@ multiplyBy640Table:
                 .beword 30*640
                 .beword 31*640
 
-LC3AD:
+textWindowBottomRowTable:
                 .byte 31                     ; Mode 0 - 32 rows
                 .byte 31                     ; Mode 1 - 32 rows
                 .byte 31                     ; Mode 2 - 32 rows
@@ -3847,7 +3847,11 @@ LC3AD:
                 .byte 31                     ; Mode 4 - 32 rows
                 .byte 31                     ; Mode 5 - 32 rows
                 .byte 24                     ; Mode 6 - 25 rows
-LC3B4:
+.if version==100 && subVersion==7                                
+                .byte 24                     ; MODE 7 (25 rows)
+.endif                
+
+textWindowRightColumnTable:
                 .byte 79                     ; Mode 0 - 80 columns
                 .byte 39                     ; Mode 1 - 40 columns
                 .byte 19                     ; Mode 2 - 20 columns
@@ -3855,6 +3859,9 @@ LC3B4:
                 .byte 39                     ; Mode 4 - 40 columns
                 .byte 19                     ; Mode 5 - 20 columns
                 .byte 39                     ; Mode 6 - 40 columns
+.if version==100 && subVersion==7                
+                .byte 39                     ; MODE 7 (40 columns)
+.endif                
 
 bytesPerCharacter:
                 .byte 8                      ; Mode 0 - 8 bytes/char
@@ -3973,12 +3980,19 @@ screenMemorySizeInBytesHigh:
                 .byte >(16*1024)
                 .byte >(10*1024)
                 .byte >(8*1024)
+.if version==100 && subVersion==7                
+                .byte $04                    ; MODE  7     ($0400 = 1k)
+.endif
 
 screenMemoryStartHigh:
                 .byte $30                    ; $3000 (20 KB)
                 .byte $40                    ; $4000 (16 KB)
                 .byte $58                    ; $5800 (10 KB)
                 .byte $60                    ; $6000 (8 KB)
+.if version==100 && subVersion==7                                
+                .byte $7C                    ; MODE  7     ($7C00)   %01111100
+.endif                
+
 
 bytesPerRowLow:
                 .byte <320
@@ -4053,7 +4067,7 @@ vduChrEntryPoint:
                 cmp #$0D                     ; Jump if not <CR>
                 bne LC452
                 lda #$BD                     ; b6+b1 - separate cursor+cursor editing
-                jsr LC530
+                jsr clearVDUStatusByteFlags
                 lsr $035F
                 lda #$0D                     ; Restore A=<CR>
 LC452:
@@ -4189,7 +4203,7 @@ LC4F7:
                 eor #$06                     ; C4F7= 49 06       I.
                 bne LC4FF                    ; C4F9= D0 04       P.
                 lda #$7F                     ; C4FB= A9 7F       ).
-                bcc LC530                    ; C4FD= 90 31       .1
+                bcc clearVDUStatusByteFlags                    ; C4FD= 90 31       .1
 LC4FF:
                 bcc LC504                    ; C4FF= 90 03       ..
                 lda vduStatusByte                      ; C501= A5 D0       %P
@@ -4238,7 +4252,7 @@ vdu21EntryPoint:
                 eor #$95                     ; C521= 49 95       I.
 LC523:
                 ora $D0                      ; C523= 05 D0       .P
-                bne LC532                    ; C525= D0 0B       P.
+                bne storeVDUStatusByteAndReturn                    ; C525= D0 0B       P.
 
 ; ***************************************************************************************
 ;
@@ -4272,10 +4286,10 @@ vdu15EntryPoint:
 ; ***************************************************************************************
 vdu4EntryPoint:
                 eor #$DB                     ; C52E= 49 DB       I[
-LC530:
-                and $D0                      ; C530= 25 D0       %P
-LC532:
-                sta $D0                      ; C532= 85 D0       .P
+clearVDUStatusByteFlags:
+                and vduStatusByte                      ; C530= 25 D0       %P
+storeVDUStatusByteAndReturn:
+                sta vduStatusByte                      ; C532= 85 D0       .P
 LC534:
                 rts                          ; C534= 60          `
 
@@ -4498,13 +4512,13 @@ vdu28EntryPoint:
                 lda vdu28ParamBottomEdge                    ; C677= AD 21 03    -!.
                 cmp vdu28ParamTopEdge                    ; C67A= CD 23 03    M#.
                 bcc LC6F5                    ; C67D= 90 76       .v
-                cmp LC3AD,x                  ; C67F= DD AD C3    ]-C
+                cmp textWindowBottomRowTable,x                  ; C67F= DD AD C3    ]-C
                 beq LC686                    ; C682= F0 02       p.
                 bcs LC6F5                    ; C684= B0 6F       0o
 LC686:
                 lda vdu28ParamRightEdge                    ; C686= AD 22 03    -".
                 tay                          ; C689= A8          (
-                cmp LC3B4,x                  ; C68A= DD B4 C3    ]4C
+                cmp textWindowRightColumnTable,x                  ; C68A= DD B4 C3    ]4C
                 beq LC691                    ; C68D= F0 02       p.
                 bcs LC6F5                    ; C68F= B0 64       0d
 LC691:
@@ -5067,13 +5081,22 @@ LC928:
                 ldy #$07                     ; C92C= A0 07        .
 LC92E:
                 lda vdu23Parameter2,y                  ; C92E= B9 1C 03    9..
-                sta ($DC),y                  ; C931= 91 DC       .\
+                sta (vduTempStoreDC),y                  ; C931= 91 DC       .\
                 dey                          ; C933= 88          .
                 bpl LC92E                    ; C934= 10 F8       .x
                 rts                          ; C936= 60          `
 
-LC937:
-                lda $031F                    ; C937= AD 1F 03    -..
+; ***************************************************************************************
+;
+; Plot extension
+;
+; If calling VDU 25 (PLOT) in a non-graphics mode, or using a plot type that is reserved
+; for future expansion, then this routine is called. It calls the VDUV vector which allows
+; user programs or Paged ROMs to intercept the call and provide new functionality.
+;
+; ***************************************************************************************
+vduPlotExtension:
+                lda vdu25Parameter5                    ; C937= AD 1F 03    -..
                 clc                          ; C93A= 18          .
 callVDUV:
                 jmp (vectorVDUV)
@@ -5093,7 +5116,7 @@ LC93E:
 LC955:
                 jsr LC97A                    ; C955= 20 7A C9     zI
                 lda #$EF                     ; C958= A9 EF       )o
-                jmp LC530                    ; C95A= 4C 30 C5    L0E
+                jmp clearVDUStatusByteFlags                    ; C95A= 4C 30 C5    L0E
 
 LC95D:
                 lda #$10                     ; C95D= A9 10       ).
@@ -5133,7 +5156,7 @@ vdu25Parameter5 = $031F
 
 vdu25EntryPoint:
                 ldx vduPixelsPerByteMinusOne                    ; C986= AE 61 03    .a.
-                beq LC937                    ; C989= F0 AC       p,
+                beq vduPlotExtension                    ; C989= F0 AC       p,
                 jmp LCF71                    ; C98B= 4C 71 CF    LqO
 
 LC98E:
@@ -5214,10 +5237,10 @@ LCA06:
                 dex                          ; CA09= CA          J
                 bpl LCA06                    ; CA0A= 10 FA       .z
                 ldx vduCurrentScreenMODE                    ; CA0C= AE 55 03    .U.
-                ldy LC3B4,x                  ; CA0F= BC B4 C3    <4C
+                ldy textWindowRightColumnTable,x                  ; CA0F= BC B4 C3    <4C
                 sty $030A                    ; CA12= 8C 0A 03    ...
                 jsr LCA87                    ; CA15= 20 87 CA     .J
-                ldy LC3AD,x                  ; CA18= BC AD C3    <-C
+                ldy textWindowBottomRowTable,x                  ; CA18= BC AD C3    <-C
                 sty $0309                    ; CA1B= 8C 09 03    ...
                 ldy #$03                     ; CA1E= A0 03        .
                 sty $0323                    ; CA20= 8C 23 03    .#.
@@ -5228,7 +5251,7 @@ LCA06:
                 jsr LCE42                    ; CA2D= 20 42 CE     BN
                 jsr vdu24EntryPoint                    ; CA30= 20 38 CA     8J
                 lda #$F7                     ; CA33= A9 F7       )w
-                jmp LC530                    ; CA35= 4C 30 C5    L0E
+                jmp clearVDUStatusByteFlags                    ; CA35= 4C 30 C5    L0E
 
 ; ***************************************************************************************
 ;
@@ -5270,7 +5293,7 @@ vdu24EntryPoint:
                 bne LCA80                    ; CA6E= D0 10       P.
                 ror a                        ; CA70= 6A          j
                 lsr a                        ; CA71= 4A          J
-                cmp LC3B4,x                  ; CA72= DD B4 C3    ]4C
+                cmp textWindowRightColumnTable,x                  ; CA72= DD B4 C3    ]4C
                 beq LCA79                    ; CA75= F0 02       p.
                 bpl LCA80                    ; CA77= 10 07       ..
 LCA79:
@@ -5383,7 +5406,7 @@ LCB12:
                 pha                          ; CB12= 48          H
                 ldx #$7F                     ; CB13= A2 7F       ".
                 lda #$00                     ; CB15= A9 00       ).
-                sta $D0                      ; CB17= 85 D0       .P
+                sta vduStatusByte                      ; CB17= 85 D0       .P
 LCB19:
                 sta $02FF,x                  ; CB19= 9D FF 02    ...
                 dex                          ; CB1C= CA          J
@@ -5463,8 +5486,9 @@ LCB68:
                 sta vduBytesPerCharacterRowLow               ; store bytes per character row 		    	; CB88= 8D 52 03    .R.
                 inx                          																; CB8B= E8          h
                 stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
-                lda #$43                     																; CB8F= A9 43       )C
-                jsr LC530                    				 ; Inside VDU 4, Select  text cursor			; CB91= 20 30 C5     0E
+                lda #%01000011                				 ; Clear: paged scrolling selected, software scrolling (text window),
+                											 ; not used, graphics cursor enabled (VDU 5), VDU disabled  	; CB8F= A9 43       )C
+                jsr clearVDUStatusByteFlags               	 												; CB91= 20 30 C5     0E
                 jsr vdu20EntryPoint                    		 ; Set Default screen colours					; CB94= 20 F6 C7     vG
                 jsr vdu26EntryPoint                    														; CB97= 20 02 CA     .J
                 jsr LC976                    																; CB9A= 20 76 C9     vI
@@ -6182,7 +6206,7 @@ LCFB9:
                 jmp LD500                    ; CFB9= 4C 00 D5    L.U
 
 LCFBC:
-                jmp LC937                    ; CFBC= 4C 37 C9    L7I
+                jmp vduPlotExtension                    ; CFBC= 4C 37 C9    L7I
 
 LCFBF:
                 sta $DA                      ; CFBF= 85 DA       .Z
@@ -7447,7 +7471,7 @@ LD7E5:
                 asl $035F                    ; D805= 0E 5F 03    ._.
 LD808:
                 lda #$BF                     ; D808= A9 BF       )?
-                jsr LC530                    ; D80A= 20 30 C5     0E
+                jsr clearVDUStatusByteFlags                    ; D80A= 20 30 C5     0E
                 pla                          ; D80D= 68          h
                 and #$7F                     ; D80E= 29 7F       ).
                 jsr vduChrEntryPoint         ; D810= 20 33 C4     3D
@@ -9771,7 +9795,7 @@ LE624:
 ; OSBYTE &75 - Read VDU status byte
 ; ---------------------------------
 osbyte75:
-                ldx $D0                      ; E648= A6 D0       &P
+                ldx vduStatusByte                      ; E648= A6 D0       &P
 LE64A:
                 rts                          ; E64A= 60          `
 
