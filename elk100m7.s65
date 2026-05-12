@@ -1,0 +1,4 @@
+version=100
+subVersion=7
+
+                .include "src/electron_os.s65"

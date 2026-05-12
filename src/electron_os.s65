@@ -828,7 +828,7 @@ vduGraphicsColourByteEOR                   = $D5       ; } mode and graphics col
 
 vduScreenAddressOfGraphicsCursorCellLow    = $D6       ; } address of the top of the cell
 vduScreenAddressOfGraphicsCursorCellHigh   = $D7       ; } on screen containing the graphics
-                                                        ; } cursor position
+                                                       ; } cursor position
 
 vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
 vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
@@ -3788,18 +3788,18 @@ vduRoutinesTable: .macro lsb
                 .vduEntry vdu18EntryPoint,2,\lsb ; VDU 18
                 .vduEntry vdu19EntryPoint,5,\lsb ; VDU 19
                 .vduEntry vdu20EntryPoint,0,\lsb ; VDU 20
-                .vduEntry LC521,0,\lsb ; VDU 21
+                .vduEntry vdu21EntryPoint,0,\lsb ; VDU 21
                 .vduEntry vdu22EntryPoint,1,\lsb ; VDU 22
-                .vduEntry LC8F2,9,\lsb ; VDU 23
-                .vduEntry LCA38,8,\lsb ; VDU 24
-                .vduEntry LC986,5,\lsb ; VDU 25
+                .vduEntry vdu23EntryPoint,9,\lsb ; VDU 23
+                .vduEntry vdu24EntryPoint,8,\lsb ; VDU 24
+                .vduEntry vdu25EntryPoint,5,\lsb ; VDU 25
                 .vduEntry vdu26EntryPoint,0,\lsb ; VDU 26
                 .vduEntry vdu27EntryPoint,0,\lsb ; VDU 27
-                .vduEntry LC674,4,\lsb ; VDU 28
-                .vduEntry LCAA1,4,\lsb ; VDU 29
-                .vduEntry LC716,0,\lsb ; VDU 30
-                .vduEntry LC725,2,\lsb ; VDU 31
-                .vduEntry LCAAB,0,\lsb ; VDU 32
+                .vduEntry vdu28EntryPoint,4,\lsb ; VDU 28
+                .vduEntry vdu29EntryPoint,4,\lsb ; VDU 29
+                .vduEntry vdu30EntryPoint,0,\lsb ; VDU 30
+                .vduEntry vdu31EntryPoint,2,\lsb ; VDU 31
+                .vduEntry vdu127EntryPoint,0,\lsb ; VDU 127
                 .endmacro
 
 vduEntryPointTableLow: .vduRoutinesTable true
@@ -3864,6 +3864,9 @@ bytesPerCharacter:
                 .byte 8                      ; Mode 4 - 8 bytes/char
                 .byte 16                     ; Mode 5 - 16 bytes/char
                 .byte 8                      ; Mode 6 - 8 bytes/char
+.if version==100 && subVersion==7
+                .byte 1                      ; MODE 7 - 1 bytes/char
+.endif
                 
 sixteenColourMODEMaskTable:
                 .byte %10101010
@@ -3890,6 +3893,10 @@ numberOfColoursMinusOneInMODETable:
                 .byte 1 					; Mode 4 - 2 colours
                 .byte 3 					; Mode 5 - 4 colours
                 .byte 1 					; Mode 6 - 2 colours
+.if version==100 && subVersion==7
+                .byte 0                     ; MODE 7 - 
+.endif
+
 LC3D6:
                 .byte $00
 LC3D7:
@@ -3928,12 +3935,12 @@ LC3DE:
                 .byte $FF
 
 pixelsPerByteMinusOneInMODETable:
-                .byte 7
-                .byte 3
-                .byte 1
-                .byte 0
-                .byte 7
-                .byte 3
+                .byte 7 					; MODE 0
+                .byte 3 					; MODE 1
+                .byte 1  					; MODE 2
+                .byte 0  					; MODE 3			
+                .byte 7  					; MODE 4
+                .byte 3  					; MODE 5
 ; Overflow: the first two bytes of the next table are accessed as the last two bytes of
 ; this table (zero for MODE 6 and 7 values).
 
@@ -3946,8 +3953,8 @@ pixelsPerByteMinusOneInMODETable:
 ; the previous table!). 
 
 screenDisplayMemoryIndexTable:
-                .byte $00
-                .byte $00
+                .byte $00 					; Also MODE6 pixelsPerByteMinusOneInMODETable
+                .byte $00 					; Also MODE7 pixelsPerByteMinusOneInMODETable
                 .byte $00
                 .byte $01
                 .byte $02
@@ -4064,7 +4071,7 @@ LC464:
 ; VDU Control codes
 ; -----------------
 handleDeleteCharacter:
-                lda #$20                     ; Offset=32 for <DEL>
+                lda #$20                     ; Offset=32 for <DEL> aka VDU 127
 
 readVDUEntryPointAddressAndParameters:
                 tay
@@ -4207,7 +4214,7 @@ LC50A:
 ; ***************************************************************************************
 vdu14EntryPoint:
                 ldy #$00                     ; C513= A0 00        .
-                sty $0269                    ; C515= 8C 69 02    .i.
+                sty pagedModeCounter                    ; C515= 8C 69 02    .i.
                 lda #$04                     ; C518= A9 04       ).
                 bne LC523                    ; C51A= D0 07       P.
 
@@ -4219,7 +4226,15 @@ vdu14EntryPoint:
 vdu2EntryPoint:
                 jsr LC50A                    ; C51C= 20 0A C5     .E
                 lda #$94                     ; C51F= A9 94       ).
-LC521:
+
+; ***************************************************************************************
+;
+;   VDU 21    Disable VDU drivers
+;
+; Output to the VDU is disabled (until a VDU 6 is used to re-enable output).
+;
+; ***************************************************************************************
+vdu21EntryPoint:
                 eor #$95                     ; C521= 49 95       I.
 LC523:
                 ora $D0                      ; C523= 05 D0       .P
@@ -4283,8 +4298,8 @@ vdu5EntryPoint:
 vdu8EntryPoint:
                 jsr testVD5State                    ; C53E= 20 05 C5     .E
                 bne LC59D                    ; C541= D0 5A       PZ
-                dec $0318                    ; C543= CE 18 03    N..
-                ldx $0318                    ; C546= AE 18 03    ...
+                dec vduTextCursorXPosition                    ; C543= CE 18 03    N..
+                ldx vduTextCursorXPosition                    ; C546= AE 18 03    ...
                 cpx $0308                    ; C549= EC 08 03    l..
                 bmi LC56C                    ; C54C= 30 1E       0.
                 lda $D6                      ; C54E= A5 D6       %V
@@ -4307,16 +4322,16 @@ LC569:
 
 LC56C:
                 lda $030A                    ; C56C= AD 0A 03    -..
-                sta $0318                    ; C56F= 8D 18 03    ...
+                sta vduTextCursorXPosition                    ; C56F= 8D 18 03    ...
 LC572:
-                dec $0269                    ; C572= CE 69 02    Ni.
+                dec pagedModeCounter                    ; C572= CE 69 02    Ni.
                 bpl LC57A                    ; C575= 10 03       ..
-                inc $0269                    ; C577= EE 69 02    ni.
+                inc pagedModeCounter                    ; C577= EE 69 02    ni.
 LC57A:
-                ldx $0319                    ; C57A= AE 19 03    ...
+                ldx vduTextCursorYPosition                    ; C57A= AE 19 03    ...
                 cpx $030B                    ; C57D= EC 0B 03    l..
                 beq LC588                    ; C580= F0 06       p.
-                dec $0319                    ; C582= CE 19 03    N..
+                dec vduTextCursorYPosition                    ; C582= CE 19 03    N..
                 jmp LCE42                    ; C585= 4C 42 CE    LBN
 
 LC588:
@@ -4385,10 +4400,10 @@ vdu9EntryPoint:
                 lda vduStatusByte                      ; C5E2= A5 D0       %P
                 and #$20                     ; C5E4= 29 20       )
                 bne LC62E                    ; C5E6= D0 46       PF
-                ldx $0318                    ; C5E8= AE 18 03    ...
+                ldx vduTextCursorXPosition                    ; C5E8= AE 18 03    ...
                 cpx $030A                    ; C5EB= EC 0A 03    l..
                 bcs LC600                    ; C5EE= B0 10       0.
-                inc $0318                    ; C5F0= EE 18 03    n..
+                inc vduTextCursorXPosition                    ; C5F0= EE 18 03    n..
                 lda $D6                      ; C5F3= A5 D6       %V
                 adc vduBytesPerCharacter                    ; C5F5= 6D 4F 03    mO.
                 tax                          ; C5F8= AA          *
@@ -4398,14 +4413,14 @@ vdu9EntryPoint:
 
 LC600:
                 lda $0308                    ; C600= AD 08 03    -..
-                sta $0318                    ; C603= 8D 18 03    ...
+                sta vduTextCursorXPosition                    ; C603= 8D 18 03    ...
 LC606:
                 clc                          ; C606= 18          .
                 jsr LCAD8                    ; C607= 20 D8 CA     XJ
-                ldx $0319                    ; C60A= AE 19 03    ...
+                ldx vduTextCursorYPosition                    ; C60A= AE 19 03    ...
                 cpx $0309                    ; C60D= EC 09 03    l..
                 bcs LC617                    ; C610= B0 05       0.
-                inc $0319                    ; C612= EE 19 03    n..
+                inc vduTextCursorYPosition                    ; C612= EE 19 03    n..
                 bcc LC62B                    ; C615= 90 14       ..
 LC617:
                 jsr LCC96                    ; C617= 20 96 CC     .L
@@ -4465,23 +4480,36 @@ LC66F:
                 ldx #$02                     ; C66F= A2 02       ".
                 jmp LC59F                    ; C671= 4C 9F C5    L.E
 
-LC674:
+; ***************************************************************************************
+;
+;   VDU 28       Define Text Window
+;
+; A sub-rectangle on screen can be defined that limits where text can be drawn.
+;
+; ***************************************************************************************
+vdu28ParamLeftEdge   = vduQueueEndByte - 3
+vdu28ParamBottomEdge = vduQueueEndByte - 2
+vdu28ParamRightEdge  = vduQueueEndByte - 1
+vdu28ParamTopEdge    = vduQueueEndByte
+; Note that last parameter is always in 0323
+
+vdu28EntryPoint:
                 ldx vduCurrentScreenMODE                    ; C674= AE 55 03    .U.
-                lda $0321                    ; C677= AD 21 03    -!.
-                cmp $0323                    ; C67A= CD 23 03    M#.
+                lda vdu28ParamBottomEdge                    ; C677= AD 21 03    -!.
+                cmp vdu28ParamTopEdge                    ; C67A= CD 23 03    M#.
                 bcc LC6F5                    ; C67D= 90 76       .v
                 cmp LC3AD,x                  ; C67F= DD AD C3    ]-C
                 beq LC686                    ; C682= F0 02       p.
                 bcs LC6F5                    ; C684= B0 6F       0o
 LC686:
-                lda $0322                    ; C686= AD 22 03    -".
+                lda vdu28ParamRightEdge                    ; C686= AD 22 03    -".
                 tay                          ; C689= A8          (
                 cmp LC3B4,x                  ; C68A= DD B4 C3    ]4C
                 beq LC691                    ; C68D= F0 02       p.
                 bcs LC6F5                    ; C68F= B0 64       0d
 LC691:
                 sec                          ; C691= 38          8
-                sbc $0320                    ; C692= ED 20 03    m .
+                sbc vdu28ParamLeftEdge                    ; C692= ED 20 03    m .
                 bmi LC6F5                    ; C695= 30 5E       0^
                 tay                          ; C697= A8          (
                 jsr LCA87                    ; C698= 20 87 CA     .J
@@ -4566,13 +4594,22 @@ vdu12EntryPoint:
 LC704:
                 ldx $030B                    ; C704= AE 0B 03    ...
 LC707:
-                stx $0319                    ; C707= 8E 19 03    ...
+                stx vduTextCursorYPosition                    ; C707= 8E 19 03    ...
                 jsr LCDE8                    ; C70A= 20 E8 CD     hM
-                ldx $0319                    ; C70D= AE 19 03    ...
+                ldx vduTextCursorYPosition                    ; C70D= AE 19 03    ...
                 cpx $0309                    ; C710= EC 09 03    l..
                 inx                          ; C713= E8          h
                 bcc LC707                    ; C714= 90 F1       .q
-LC716:
+
+; ***************************************************************************************
+;
+;   VDU 30      Home Cursor
+;
+; Moves the current cursor (text or graphics) to the top left of the defined text or
+; graphics window.
+;
+; ***************************************************************************************
+vdu30EntryPoint:
                 jsr testVD5State                    ; C716= 20 05 C5     .E
                 bne LC74D                    ; C719= D0 32       P2
 LC71B:
@@ -4580,19 +4617,28 @@ LC71B:
                 sta $0323                    ; C71D= 8D 23 03    .#.
                 sta $0322                    ; C720= 8D 22 03    .".
                 beq LC72A                    ; C723= F0 05       p.
-LC725:
+
+; ***************************************************************************************
+;
+;   VDU 31      Position text cursor
+;
+; ***************************************************************************************
+vdu31ParamXCoordinate = vduQueueEndByte - 1
+vdu31ParamYCoordinate = vduQueueEndByte
+
+vdu31EntryPoint:
                 jsr testVD5State                    ; C725= 20 05 C5     .E
                 bne LC6F5                    ; C728= D0 CB       PK
 LC72A:
                 jsr LC746                    ; C72A= 20 46 C7     FG
                 clc                          ; C72D= 18          .
-                lda $0322                    ; C72E= AD 22 03    -".
+                lda vdu31ParamXCoordinate                    ; C72E= AD 22 03    -".
                 adc $0308                    ; C731= 6D 08 03    m..
-                sta $0318                    ; C734= 8D 18 03    ...
-                lda $0323                    ; C737= AD 23 03    -#.
+                sta vduTextCursorXPosition                    ; C734= 8D 18 03    ...
+                lda vdu31ParamYCoordinate                    ; C737= AD 23 03    -#.
                 clc                          ; C73A= 18          .
                 adc $030B                    ; C73B= 6D 0B 03    m..
-                sta $0319                    ; C73E= 8D 19 03    ...
+                sta vduTextCursorYPosition                    ; C73E= 8D 19 03    ...
                 jsr LCE24                    ; C741= 20 24 CE     $N
                 bcc LC6F5                    ; C744= 90 AF       ./
 LC746:
@@ -4952,8 +4998,35 @@ vdu22EntryPoint:
                 lda vduQueueEndByte                    ; C8EC= AD 23 03    -#.
                 jmp setMODE                    ; C8EF= 4C 30 CB    L0K
 
-LC8F2:
-                lda $031B                    ; C8F2= AD 1B 03    -..
+; ***************************************************************************************
+;
+;   VDU 23      Define Character
+;
+; See guide.png
+;
+; On Entry:
+;   A = 0 sets CRTC 6845 register:
+;       VDU 23,0,R,X,0,0,0,0,0,0 - program CRTC register R with value V
+;       See Chapter 3 section 'CRTC registers'
+;   A = 1 turns the cursor on or off:
+;       VDU 23,1,0,0,0,0,0,0,0,0 - turn cursor off
+;       VDU 23,1,1,0,0,0,0,0,0,0 - turn cursor on
+;   A = 32-255 means define character
+;
+; ***************************************************************************************
+vdu23ParameterLogicalColour = vduQueueStartByte
+vdu23Parameter1 = vduQueueEndByte - 8
+vdu23Parameter2 = vduQueueEndByte - 7
+vdu23Parameter3 = vduQueueEndByte - 6
+vdu23Parameter4 = vduQueueEndByte - 5
+vdu23Parameter5 = vduQueueEndByte - 4
+vdu23Parameter6 = vduQueueEndByte - 3
+vdu23Parameter7 = vduQueueEndByte - 2
+vdu23Parameter8 = vduQueueEndByte - 1
+vdu23Parameter9 = vduQueueEndByte
+
+vdu23EntryPoint:
+                lda vdu23ParameterLogicalColour                    ; C8F2= AD 1B 03    -..
                 cmp #$20                     ; C8F5= C9 20       I
                 bcc LC93E                    ; C8F7= 90 45       .E
                 pha                          ; C8F9= 48          H
@@ -4993,7 +5066,7 @@ LC928:
                 jsr getCharacterDefinitionAddress                    ; C929= 20 4F CF     OO
                 ldy #$07                     ; C92C= A0 07        .
 LC92E:
-                lda $031C,y                  ; C92E= B9 1C 03    9..
+                lda vdu23Parameter2,y                  ; C92E= B9 1C 03    9..
                 sta ($DC),y                  ; C931= 91 DC       .\
                 dey                          ; C933= 88          .
                 bpl LC92E                    ; C934= 10 F8       .x
@@ -5051,7 +5124,14 @@ LC97A:
                 plp                          ; C984= 28          (
                 rts                          ; C985= 60          `
 
-LC986:
+; ***************************************************************************************
+;
+;   VDU 25      Plot
+;
+; ***************************************************************************************
+vdu25Parameter5 = $031F
+
+vdu25EntryPoint:
                 ldx vduPixelsPerByteMinusOne                    ; C986= AE 61 03    .a.
                 beq LC937                    ; C989= F0 AC       p,
                 jmp LCF71                    ; C98B= 4C 71 CF    LqO
@@ -5146,11 +5226,25 @@ LCA06:
                 dec $0322                    ; CA27= CE 22 03    N".
                 dec $0320                    ; CA2A= CE 20 03    N .
                 jsr LCE42                    ; CA2D= 20 42 CE     BN
-                jsr LCA38                    ; CA30= 20 38 CA     8J
+                jsr vdu24EntryPoint                    ; CA30= 20 38 CA     8J
                 lda #$F7                     ; CA33= A9 F7       )w
                 jmp LC530                    ; CA35= 4C 30 C5    L0E
 
-LCA38:
+; ***************************************************************************************
+;
+;   VDU 24      Define graphics window
+;
+; ***************************************************************************************
+vdu24ParameterLeftEdgeLow      = vduQueueEndByte - 7
+vdu24ParameterLeftEdgeHigh     = vduQueueEndByte - 6
+vdu24ParameterBottomEdgeLow    = vduQueueEndByte - 5
+vdu24ParameterBottomEdgeHigh   = vduQueueEndByte - 4
+vdu24ParameterRightEdgeLow     = vduQueueEndByte - 3
+vdu24ParameterRightEdgeHigh    = vduQueueEndByte - 2
+vdu24ParameterTopEdgeLow       = vduQueueEndByte - 1
+vdu24ParameterTopEdgeHigh      = vduQueueEndByte
+
+vdu24EntryPoint:
                 jsr LCA80                    ; CA38= 20 80 CA     .J
                 ldx #$1C                     ; CA3B= A2 1C       ".
                 ldy #$2C                     ; CA3D= A0 2C        ,
@@ -5205,13 +5299,25 @@ LCA97:
 LCAA0:
                 rts                          ; CAA0= 60          `
 
-LCAA1:
+; ***************************************************************************************
+;
+;   VDU 29      Set graphics origin
+;
+; ***************************************************************************************
+vdu29ParameterStart = $320
+
+vdu29EntryPoint:
                 ldx #$20                     ; CAA1= A2 20       "
                 ldy #$0C                     ; CAA3= A0 0C        .
                 jsr LD3A1                    ; CAA5= 20 A1 D3     !S
                 jmp LD0C9                    ; CAA8= 4C C9 D0    LIP
 
-LCAAB:
+; ***************************************************************************************
+;
+;   VDU 127     Delete
+;
+; ***************************************************************************************
+vdu127EntryPoint:
                 jsr vdu8EntryPoint                    ; CAAB= 20 3E C5     >E
                 jsr testVD5State                    ; CAAE= 20 05 C5     .E
                 bne LCABC                    ; CAB1= D0 09       P.
@@ -5248,15 +5354,15 @@ LCADF:
                 eor #$04                     ; CAE1= 49 04       I.
                 and #$46                     ; CAE3= 29 46       )F
                 bne LCB11                    ; CAE5= D0 2A       P*
-                lda $0269                    ; CAE7= AD 69 02    -i.
+                lda pagedModeCounter                    ; CAE7= AD 69 02    -i.
                 bmi LCB0E                    ; CAEA= 30 22       0"
-                lda $0319                    ; CAEC= AD 19 03    -..
+                lda vduTextCursorYPosition                    ; CAEC= AD 19 03    -..
                 cmp $0309                    ; CAEF= CD 09 03    M..
                 bcc LCB0E                    ; CAF2= 90 1A       ..
                 lsr a                        ; CAF4= 4A          J
                 lsr a                        ; CAF5= 4A          J
                 sec                          ; CAF6= 38          8
-                adc $0269                    ; CAF7= 6D 69 02    mi.
+                adc pagedModeCounter                    ; CAF7= 6D 69 02    mi.
                 adc $030B                    ; CAFA= 6D 0B 03    m..
                 cmp $0309                    ; CAFD= CD 09 03    M..
                 bcc LCB0E                    ; CB00= 90 0C       ..
@@ -5267,9 +5373,9 @@ LCB03:
                 bpl LCB03                    ; CB07= 10 FA       .z
 LCB09:
                 lda #$FF                     ; CB09= A9 FF       ).
-                sta $0269                    ; CB0B= 8D 69 02    .i.
+                sta pagedModeCounter                    ; CB0B= 8D 69 02    .i.
 LCB0E:
-                inc $0269                    ; CB0E= EE 69 02    ni.
+                inc pagedModeCounter                    ; CB0E= EE 69 02    ni.
 LCB11:
                 rts                          ; CB11= 60          `
 
@@ -5314,15 +5420,15 @@ setMODE:
                 .else
 
                 jsr getNormalisedMODE                    	; Returns X as Mode no. 0-6, A as mode * 8 for Lookup table ; CB30= 20 DA DA     ZZ
-                stx vduCurrentScreenMODE                    ; CB33= 8E 55 03    .U.
-                php                          				; CB36= 08          .
-                sei                          				; CB37= 78          x
-                sta internalCassetteFilingSystemVar         ; CB38= 8D F4 02    .t.
-                lda miscRegisterCopy                    	; CB3B= AD 82 02    -..
+                stx vduCurrentScreenMODE                    												; CB33= 8E 55 03    .U.
+                php                          																; CB36= 08          .
+                sei                          																; CB37= 78          x
+                sta internalCassetteFilingSystemVar         												; CB38= 8D F4 02    .t.
+                lda miscRegisterCopy                    													; CB3B= AD 82 02    -..
                 and #~(7<<miscellaneousControlRegister.displayModeShift)&$ff
-                ora internalCassetteFilingSystemVar         ; CB40= 0D F4 02    .t.
-                sta miscRegisterCopy                    	; CB43= 8D 82 02    ...
-                sta miscellaneousControlRegister            ; CB46= 8D 07 FE    ..~
+                ora internalCassetteFilingSystemVar         												; CB40= 0D F4 02    .t.
+                sta miscRegisterCopy                    													; CB43= 8D 82 02    ...
+                sta miscellaneousControlRegister            												; CB46= 8D 07 FE    ..~
                 .endif
 
                 plp                          																; CB49= 28          (
@@ -5369,9 +5475,9 @@ LCB9D:
                 jsr LC561                    																; CBA5= 20 61 C5     aE
                 jsr LCC03                    																; CBA8= 20 03 CC     .L
                 lda #$00                     ; CBAB= A9 00       ).
-                sta $0269                    ; CBAD= 8D 69 02    .i.
-                sta $0318                    ; CBB0= 8D 18 03    ...
-                sta $0319                    ; CBB3= 8D 19 03    ...
+                sta pagedModeCounter                    ; CBAD= 8D 69 02    .i.
+                sta vduTextCursorXPosition                    ; CBB0= 8D 18 03    ...
+                sta vduTextCursorYPosition                    ; CBB3= 8D 19 03    ...
 
                 .if version==300&&(subVersion==213||subVersion==524)
 
@@ -5411,8 +5517,8 @@ LCBD4_300_213:
                 ldx #$06                     ; CBB6= A2 06       ".
                 ldy vduStartScreenAddressHighByte                    ; CBB8= AC 4E 03    ,N.
 LCBBB:
-                sty $D9,x                    ; CBBB= 94 D9       .Y
-                sta $D8,x                    ; CBBD= 95 D8       .X
+                sty vduWriteCursorScreenAddressHigh,x                    ; CBBB= 94 D9       .Y
+                sta vduWriteCursorScreenAddressLow,x                    ; CBBD= 95 D8       .X
                 iny                          ; CBBF= C8          H
                 dex                          ; CBC0= CA          J
                 dex                          ; CBC1= CA          J
@@ -5578,7 +5684,7 @@ LCC9E:
                 lda $030B                    ; CCA3= AD 0B 03    -..
 LCCA6:
                 bvs LCCB0                    ; CCA6= 70 08       p.
-                sta $0319                    ; CCA8= 8D 19 03    ...
+                sta vduTextCursorYPosition                    ; CCA8= 8D 19 03    ...
                 pla                          ; CCAB= 68          h
                 pla                          ; CCAC= 68          h
                 jmp LC62B                    ; CCAD= 4C 2B C6    L+F
@@ -5622,7 +5728,7 @@ LCCDC:
 LCCDD:
                 jsr LCD97                    ; CCDD= 20 97 CD     .M
                 lda $0309                    ; CCE0= AD 09 03    -..
-                sta $0319                    ; CCE3= 8D 19 03    ...
+                sta vduTextCursorYPosition                    ; CCE3= 8D 19 03    ...
                 jsr LCE42                    ; CCE6= 20 42 CE     BN
 LCCE9:
                 jsr LCC4F                    ; CCE9= 20 4F CC     OL
@@ -5679,7 +5785,7 @@ LCD26:
 LCD3B:
                 jsr LCD97                    ; CD3B= 20 97 CD     .M
                 ldy $030B                    ; CD3E= AC 0B 03    ,..
-                sty $0319                    ; CD41= 8C 19 03    ...
+                sty vduTextCursorYPosition                    ; CD41= 8C 19 03    ...
                 jsr LCE42                    ; CD44= 20 42 CE     BN
 LCD47:
                 jsr LCAC9                    ; CD47= 20 C9 CA     IJ
@@ -5784,7 +5890,7 @@ LCDDA:
                 rts                          ; CDE7= 60          `
 
 LCDE8:
-                lda $0318                    ; CDE8= AD 18 03    -..
+                lda vduTextCursorXPosition                    ; CDE8= AD 18 03    -..
                 pha                          ; CDEB= 48          H
                 jsr LCDAA                    ; CDEC= 20 AA CD     *M
                 jsr LCE42                    ; CDEF= 20 42 CE     BN
@@ -5816,27 +5922,27 @@ LCE1A:
                 bpl LCDFB                    ; CE1C= 10 DD       .]
                 pla                          ; CE1E= 68          h
 LCE1F:
-                sta $0318                    ; CE1F= 8D 18 03    ...
+                sta vduTextCursorXPosition                    ; CE1F= 8D 18 03    ...
 LCE22:
                 sec                          ; CE22= 38          8
                 rts                          ; CE23= 60          `
 
 LCE24:
-                ldx $0318                    ; CE24= AE 18 03    ...
+                ldx vduTextCursorXPosition                    ; CE24= AE 18 03    ...
                 cpx $0308                    ; CE27= EC 08 03    l..
                 bmi LCE22                    ; CE2A= 30 F6       0v
                 cpx $030A                    ; CE2C= EC 0A 03    l..
                 beq LCE33                    ; CE2F= F0 02       p.
                 bpl LCE22                    ; CE31= 10 EF       .o
 LCE33:
-                ldx $0319                    ; CE33= AE 19 03    ...
+                ldx vduTextCursorYPosition                    ; CE33= AE 19 03    ...
                 cpx $030B                    ; CE36= EC 0B 03    l..
                 bmi LCE22                    ; CE39= 30 E7       0g
                 cpx $0309                    ; CE3B= EC 09 03    l..
                 beq LCE42                    ; CE3E= F0 02       p.
                 bpl LCE22                    ; CE40= 10 E0       .`
 LCE42:
-                lda $0319                    ; CE42= AD 19 03    -..
+                lda vduTextCursorYPosition                    ; CE42= AD 19 03    -..
                 asl a                        ; CE45= 0A          .
                 tay                          ; CE46= A8          (
                 lda multiplyBy640Table,y                  ; CE47= B9 6D C3    9mC
@@ -5853,7 +5959,7 @@ LCE58:
                 lda $D7                      ; CE5D= A5 D7       %W
                 adc $0351                    ; CE5F= 6D 51 03    mQ.
                 tay                          ; CE62= A8          (
-                lda $0318                    ; CE63= AD 18 03    -..
+                lda vduTextCursorXPosition                    ; CE63= AD 18 03    -..
                 ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
                 cpx #$10                     ; CE69= E0 10       `.
                 beq LCE70                    ; CE6B= F0 03       p.
@@ -6944,11 +7050,11 @@ LD54C:
                 jmp LCD22                    ; D55A= 4C 22 CD    L"M
 
 osbyte86:
-                lda $0318                    ; D55D= AD 18 03    -..
+                lda vduTextCursorXPosition                    ; D55D= AD 18 03    -..
                 sec                          ; D560= 38          8
                 sbc $0308                    ; D561= ED 08 03    m..
                 tax                          ; D564= AA          *
-                lda $0319                    ; D565= AD 19 03    -..
+                lda vduTextCursorYPosition                    ; D565= AD 19 03    -..
                 sec                          ; D568= 38          8
                 sbc $030B                    ; D569= ED 0B 03    m..
                 tay                          ; D56C= A8          (
@@ -7860,9 +7966,11 @@ LDAD7:
 ;           A=validated mode number * 8
 getNormalisedMODE:
                 and #$07                     ; Isolate the mode in lowe 3 bits 	; DADA= 29 07       ).
+.if !(version==100 && subVersion==7) 		 ; Jamsoft Mode 7 allows modes 0-7...
                 cmp #$07                     ; Compare with 7 					; DADC= C9 07       I.
                 bcc LDAE2                    ; If mode is greater than or equal to 7 then 	; DADE= 90 02       ..
                 lda #$06                     ; Set mode in A to 6 				; DAE0= A9 06       ).
+.endif
 LDAE2:
                 tax                          ; Move mode to X 					; DAE2= AA          *
                 asl a                        ; Multiply by 2 					; DAE3= 0A          .
@@ -9301,7 +9409,7 @@ osbyte7E:
                 lda $0276                    ; Check Escape effects, skip if disabled
                 bne LE47D
                 cli                          ; Enable IRQs
-                sta $0269                    ; Clear paged line counter
+                sta pagedModeCounter                    ; Clear paged line counter
                 jsr LF5EA                    ; Close any open EXEC file
                 jsr LDEEA                    ; Flush all buffers
 LE47D:
@@ -9808,7 +9916,7 @@ LE6F5:
                 lda ($F0),y                  ; E6FF= B1 F0       1p
                 sta $E9                      ; E701= 85 E9       .i
                 dey                          ; E703= 88          .
-                sty $0269                    ; E704= 8C 69 02    .i.
+                sty pagedModeCounter                    ; E704= 8C 69 02    .i.
                 lda ($F0),y                  ; E707= B1 F0       1p
                 sta $E8                      ; E709= 85 E8       .h
                 cli                          ; E70B= 58          X
