@@ -4296,7 +4296,7 @@ exchangeTextCursorAndInputCursorValues:
                 ldx #$18
                 ldy #$64
                 jsr LCD1A
-                jsr LCE42
+                jsr setTextCursorScreenAddresses
                 lda vduStatusByte
                 eor #$02
                 sta $D0
@@ -4451,7 +4451,7 @@ LC57A:
                 cpx vduTextWindowTop                    ; C57D= EC 0B 03    l..
                 beq LC588                    ; C580= F0 06       p.
                 dec vduTextCursorYPosition                    ; C582= CE 19 03    N..
-                jmp LCE42                    ; C585= 4C 42 CE    LBN
+                jmp setTextCursorScreenAddresses                    ; C585= 4C 42 CE    LBN
 
 LC588:
                 clc                          ; C588= 18          .
@@ -4553,7 +4553,7 @@ LC625:
 LC628:
                 jsr LCDE8                    ; C628= 20 E8 CD     hM
 LC62B:
-                jmp LCE42                    ; C62B= 4C 42 CE    LBN
+                jmp setTextCursorScreenAddresses                    ; C62B= 4C 42 CE    LBN
 
 LC62E:
                 ldx #$00                     ; C62E= A2 00       ".
@@ -4785,7 +4785,7 @@ vdu13EntryPoint:
                 jsr testVD5State                    ; C75E= 20 05 C5     .E
                 bne LC754                    ; C761= D0 F1       Pq
                 jsr LCDAA                    ; C763= 20 AA CD     *M
-                jmp LCE42                    ; C766= 4C 42 CE    LBN
+                jmp setTextCursorScreenAddresses                    ; C766= 4C 42 CE    LBN
 
 LC769:
                 jsr LC74D                    ; C769= 20 4D C7     MG
@@ -5304,22 +5304,22 @@ LC9D0:
                 rts                          ; C9D0= 60          `
 
 LC9D1:
-                ldx $0350                    ; C9D1= AE 50 03    .P.
-                lda $0351                    ; C9D4= AD 51 03    -Q.
+                ldx vduScreenTopLeftAddressLow                    ; C9D1= AE 50 03    .P.
+                lda vduScreenTopLeftAddressHigh                    ; C9D4= AD 51 03    -Q.
                 jsr LCC4F                    ; C9D7= 20 4F CC     OL
                 bcs LC9F0                    ; C9DA= B0 14       0.
                 adc vduScreenSizeHighByte                    ; C9DC= 6D 54 03    mT.
                 bcc LC9F0                    ; C9DF= 90 0F       ..
 LC9E1:
-                ldx $0350                    ; C9E1= AE 50 03    .P.
-                lda $0351                    ; C9E4= AD 51 03    -Q.
+                ldx vduScreenTopLeftAddressLow                    ; C9E1= AE 50 03    .P.
+                lda vduScreenTopLeftAddressHigh                    ; C9E4= AD 51 03    -Q.
                 jsr LCAC9                    ; C9E7= 20 C9 CA     IJ
                 bpl LC9F0                    ; C9EA= 10 04       ..
                 sec                          ; C9EC= 38          8
                 sbc vduScreenSizeHighByte                    ; C9ED= ED 54 03    mT.
 LC9F0:
-                sta $0351                    ; C9F0= 8D 51 03    .Q.
-                stx $0350                    ; C9F3= 8E 50 03    .P.
+                sta vduScreenTopLeftAddressHigh                    ; C9F0= 8D 51 03    .Q.
+                stx vduScreenTopLeftAddressLow                    ; C9F3= 8E 50 03    .P.
                 pha                          ; C9F6= 48          H
                 lsr a                        ; C9F7= 4A          J
                 sta screenStartAddressRegisterHigh                    ; C9F8= 8D 03 FE    ..~
@@ -5353,7 +5353,7 @@ LCA06:
                 sty $0321                    ; CA24= 8C 21 03    .!.
                 dec $0322                    ; CA27= CE 22 03    N".
                 dec $0320                    ; CA2A= CE 20 03    N .
-                jsr LCE42                    ; CA2D= 20 42 CE     BN
+                jsr setTextCursorScreenAddresses                    ; CA2D= 20 42 CE     BN
                 jsr vdu24EntryPoint                    ; CA30= 20 38 CA     8J
                 lda #$F7                     ; CA33= A9 F7       )w
                 jmp clearVDUStatusByteFlags                    ; CA35= 4C 30 C5    L0E
@@ -5582,6 +5582,7 @@ setMODE:
                 sta miscellaneousControlRegister            												; CB46= 8D 07 FE    ..~
 .endif
 
+                ; Set characteristic vdu variables for the new mode
                 plp                          																; CB49= 28          (
                 lda numberOfColoursMinusOneInMODETable,x    ; Look up the no. colours for mode, store in A  ; CB4A= BD CF C3    =OC
                 sta vduNumberOfLogicalColoursMinusOne       ; Save that in VDU Var             				; CB4D= 8D 60 03    .`.
@@ -5602,15 +5603,28 @@ LCB68:
                 sta vduColourMaskLeft                    	; store as colour mask left 					; CB6B= 8D 62 03    .b.
                 ldy screenDisplayMemoryIndexTable,x                  										; CB6E= BC FB C3    <{C
                 sty vduCurrentScreenMODEGroup                    											; CB71= 8C 56 03    .V.
+
                 lda screenMemorySizeInBytesHigh,y                  											; CB74= B9 07 C4    9.D
                 sta vduScreenSizeHighByte                    												; CB77= 8D 54 03    .T.
                 lda screenMemoryStartHigh,y                  												; CB7A= B9 0B C4    9.D
                 sta vduStartScreenAddressHighByte                    										; CB7D= 8D 4E 03    .N.
+                
+                ; A=Y=the screen memory type
                 tya                         																; CB80= 98          .
                 lsr a                        																; CB81= 4A          J
                 eor #$01                    																; CB82= 49 01       I.
-                tax                          																; CB84= AA          *
+                tax                          				; X=A Index into multiplication table												; CB84= AA          *
+                                                            ; (0 = MODE 7
+                                                            ;  1 = MODE 4,5,6
+                                                            ;  2 = MODE 0,1,2,3)
+.if version==100 && subVersion==7
+                lda multiplicationTabletoUseLow,x            ; load the low byte of the multiplication table to use
+                sta vduMultiplicationTableLow                ; store
+                lda #>multiplyBy640Table                     ; high byte of multiplication tables
+                sta vduMultiplicationTableHigh               ; store. Now (.vduMultiplicationTableLow) points to 640x multiplication table or 40x.                                                            
+.endif
                 lda bytesPerRowLow,x                  														; CB85= BD 0F C4    =.D
+
                 sta vduBytesPerCharacterRowLow               ; store bytes per character row 		    	; CB88= 8D 52 03    .R.
                 inx                          																; CB8B= E8          h
                 stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
@@ -5932,7 +5946,7 @@ scrollTextWindowDownwards:
                 jsr LCD97                    ; CCDD= 20 97 CD     .M
                 lda $0309                    ; CCE0= AD 09 03    -..
                 sta vduTextCursorYPosition                    ; CCE3= 8D 19 03    ...
-                jsr LCE42                    ; CCE6= 20 42 CE     BN
+                jsr setTextCursorScreenAddresses                    ; CCE6= 20 42 CE     BN
 LCCE9:
                 jsr LCC4F                    ; CCE9= 20 4F CC     OL
                 bcs LCCF1                    ; CCEC= B0 03       0.
@@ -5993,7 +6007,7 @@ scrollTextWindowUpwards:
                 jsr LCD97                    ; CD3B= 20 97 CD     .M
                 ldy vduTextWindowTop                    ; CD3E= AC 0B 03    ,..
                 sty vduTextCursorYPosition                    ; CD41= 8C 19 03    ...
-                jsr LCE42                    ; CD44= 20 42 CE     BN
+                jsr setTextCursorScreenAddresses                    ; CD44= 20 42 CE     BN
 LCD47:
                 jsr LCAC9                    ; CD47= 20 C9 CA     IJ
                 bpl LCD50                    ; CD4A= 10 04       ..
@@ -6110,7 +6124,7 @@ LCDE8:
                 lda vduTextCursorXPosition                    ; CDE8= AD 18 03    -..
                 pha                          ; CDEB= 48          H
                 jsr LCDAA                    ; CDEC= 20 AA CD     *M
-                jsr LCE42                    ; CDEF= 20 42 CE     BN
+                jsr setTextCursorScreenAddresses                    ; CDEF= 20 42 CE     BN
                 sec                          ; CDF2= 38          8
                 lda $030A                    ; CDF3= AD 0A 03    -..
                 sbc $0308                    ; CDF6= ED 08 03    m..
@@ -6156,9 +6170,39 @@ LCE33:
                 cpx vduTextWindowTop                    ; CE36= EC 0B 03    l..
                 bmi LCE22                    ; CE39= 30 E7       0g
                 cpx $0309                    ; CE3B= EC 09 03    l..
-                beq LCE42                    ; CE3E= F0 02       p.
+                beq setTextCursorScreenAddresses                    ; CE3E= F0 02       p.
                 bpl LCE22                    ; CE40= 10 E0       .`
-LCE42:
+                ; fall through...
+
+; ***************************************************************************************
+;
+; Set text cursor screen addresses from X,Y position
+;
+; Let X,Y be the text cursor position (in absolute character cells from top left corner)
+;
+;     MODE 0: address = screen_start + Y*640 + X* 8
+;     MODE 1: address = screen_start + Y*640 + X*16
+;     MODE 2: address = screen_start + Y*640 + X*32
+;     MODE 3: address = screen_start + Y*640 + X* 8
+;     MODE 4: address = screen_start + Y*320 + X* 8
+;     MODE 5: address = screen_start + Y*320 + X*16
+;     MODE 6: address = screen_start + Y*320 + X* 8
+;     MODE 7: address = screen_start + Y* 40 + X
+;
+; Given the text cursor X,Y position, use the multiplication table and other characteristic
+; values for the current MODE to calculate the address on screen.
+;
+; On Entry:
+;       .vduTextCursorX/YPosition stores the X,Y coordinates of the text cursor
+;
+; On Exit:
+;       Carry clear
+;       Stores the result in .vduTextCursorCRTCAddressLow/High, then wraps the address back on
+;       screen if beyond the bottom of the screen. Store the new wrapped result in
+;       .vduWriteCursorScreenAddressLow/High.
+;
+; ***************************************************************************************
+setTextCursorScreenAddresses:
                 lda vduTextCursorYPosition                    ; CE42= AD 19 03    -..
                 asl a                        ; CE45= 0A          .
                 tay                          ; CE46= A8          (
@@ -6171,10 +6215,10 @@ LCE42:
                 lsr $D7                      ; CE55= 46 D7       FW
                 ror a                        ; CE57= 6A          j
 LCE58:
-                adc $0350                    ; CE58= 6D 50 03    mP.
+                adc vduScreenTopLeftAddressLow                    ; CE58= 6D 50 03    mP.
                 sta $D6                      ; CE5B= 85 D6       .V
                 lda $D7                      ; CE5D= A5 D7       %W
-                adc $0351                    ; CE5F= 6D 51 03    mQ.
+                adc vduScreenTopLeftAddressHigh                    ; CE5F= 6D 51 03    mQ.
                 tay                          ; CE62= A8          (
                 lda vduTextCursorXPosition                    ; CE63= AD 18 03    -..
                 ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
@@ -7626,10 +7670,10 @@ LD77A:
                 lsr $D8                      ; D798= 46 D8       FX
                 ror a                        ; D79A= 6A          j
 LD79B:
-                adc $0350                    ; D79B= 6D 50 03    mP.
+                adc vduScreenTopLeftAddressLow                    ; D79B= 6D 50 03    mP.
                 sta $D4                      ; D79E= 85 D4       .T
                 lda $D8                      ; D7A0= A5 D8       %X
-                adc $0351                    ; D7A2= 6D 51 03    mQ.
+                adc vduScreenTopLeftAddressHigh                    ; D7A2= 6D 51 03    mQ.
                 sta $D5                      ; D7A5= 85 D5       .U
                 lda $0301,x                  ; D7A7= BD 01 03    =..
                 sta $D8                      ; D7AA= 85 D8       .X
