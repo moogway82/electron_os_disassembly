@@ -1240,7 +1240,7 @@ countryCode                                = $0280     ; 0 = UK
 userFlag                                   = $0281     ; free for use by an application (not used by the OS)
                                                         ; (Read/Write with OSBYTE 241 but prefer using OSBYTE 1)
 
-miscRegisterCopy               		       = $0282     ; RAM copy of ULA miscellaneous register.
+miscellaneousControlRegisterCopy               		       = $0282     ; RAM copy of ULA miscellaneous register.
                                                         ; (Read using OSBYTE 242)
 timeClockSwitch                            = $0283     ; which five byte clock is in currently use (5 or 10)
                                                         ; (Read using OSBYTE 243)
@@ -1489,56 +1489,56 @@ vduWorkspaceT                              = $033B     ;
 vduWorkspaceU                              = $033C     ;
 vduWorkspaceV                              = $033D     ;
 
-vduClearGraphicsWindowLineCount            = .vduWorkspaceI ; line counter used in VDU 16 (clear graphics window)
-vduMODE7CursorCharacter                    = .vduWorkspaceQ ;
+vduClearGraphicsWindowLineCount            = vduWorkspaceI ; line counter used in VDU 16 (clear graphics window)
+vduMODE7CursorCharacter                    = vduWorkspaceQ ;
 
 ; Plot line variables
-vduPlotLineDeltaXLow                       = .vduWorkspaceA ; 'plot line' variables
-vduPlotLineDeltaXHigh                      = .vduWorkspaceB ;
-vduPlotLineDeltaYLow                       = .vduWorkspaceC ;
-vduPlotLineDeltaYHigh                      = .vduWorkspaceD ;
-vduPlotLineCurrentPointXLow                = .vduWorkspaceE ;
-vduPlotLineCurrentPointXHigh               = .vduWorkspaceF ;
-vduPlotLineCurrentPointYLow                = .vduWorkspaceG ;
-vduPlotLineCurrentPointYHigh               = .vduWorkspaceH ;
-vduPlotLineTerminationValueLow             = .vduWorkspaceI ; } final coordinate in the
-vduPlotLineTerminationValueHigh            = .vduWorkspaceJ ; } dominant axis. Used to check
+vduPlotLineDeltaXLow                       = vduWorkspaceA ; 'plot line' variables
+vduPlotLineDeltaXHigh                      = vduWorkspaceB ;
+vduPlotLineDeltaYLow                       = vduWorkspaceC ;
+vduPlotLineDeltaYHigh                      = vduWorkspaceD ;
+vduPlotLineCurrentPointXLow                = vduWorkspaceE ;
+vduPlotLineCurrentPointXHigh               = vduWorkspaceF ;
+vduPlotLineCurrentPointYLow                = vduWorkspaceG ;
+vduPlotLineCurrentPointYHigh               = vduWorkspaceH ;
+vduPlotLineTerminationValueLow             = vduWorkspaceI ; } final coordinate in the
+vduPlotLineTerminationValueHigh            = vduWorkspaceJ ; } dominant axis. Used to check
                                                              ; } when done plotting a line.
 
-vduPlotLineRoutineLow                      = .vduWorkspaceK ; } address of routine to use
-vduPlotLineRoutineHigh                     = .vduWorkspaceL ; } when drawing a line
-vduPlotLinePlotDottedPixelFlag             = .vduWorkspaceM ; 127 to draw a dot; 128 to skip
-vduPlotLineErrorTermLow                    = .vduWorkspaceN ;
-vduPlotLineErrorTermHigh                   = .vduWorkspaceO ;
-vduPlotLineAbsNonDominantAxisDeltaLow      = .vduWorkspaceP ;
-vduPlotLineAbsNonDominantAxisDeltaHigh     = .vduWorkspaceQ ;
-vduPlotLineAbsDominantAxisDeltaLow         = .vduWorkspaceR ;
-vduPlotLineAbsDominantAxisDeltaHigh        = .vduWorkspaceS ;
+vduPlotLineRoutineLow                      = vduWorkspaceK ; } address of routine to use
+vduPlotLineRoutineHigh                     = vduWorkspaceL ; } when drawing a line
+vduPlotLinePlotDottedPixelFlag             = vduWorkspaceM ; 127 to draw a dot; 128 to skip
+vduPlotLineErrorTermLow                    = vduWorkspaceN ;
+vduPlotLineErrorTermHigh                   = vduWorkspaceO ;
+vduPlotLineAbsNonDominantAxisDeltaLow      = vduWorkspaceP ;
+vduPlotLineAbsNonDominantAxisDeltaHigh     = vduWorkspaceQ ;
+vduPlotLineAbsDominantAxisDeltaLow         = vduWorkspaceR ;
+vduPlotLineAbsDominantAxisDeltaHigh        = vduWorkspaceS ;
 
 ; Plot triangle variables
-vduPlotTriMainLineErrorTermLow             = .vduWorkspaceA ; 'plot triangle' variables
-vduPlotTriMainLineErrorTermHigh            = .vduWorkspaceB ; tracking the 'main line'
-vduPlotTriMainLineDeltaXLow                = .vduWorkspaceC ;
-vduPlotTriMainLineDeltaXHigh               = .vduWorkspaceD ;
-vduPlotTriMainLineDeltaYLow                = .vduWorkspaceE ;
-vduPlotTriMainLineDeltaYHigh               = .vduWorkspaceF ;
-vduPlotTriMainLineCurrentPointXLow         = .vduWorkspaceG ;
-vduPlotTriMainLineCurrentPointXHigh        = .vduWorkspaceH ;
-vduPlotTriMainLineCurrentPointYLow         = .vduWorkspaceI ;
-vduPlotTriMainLineCurrentPointYHigh        = .vduWorkspaceJ ;
-vduPlotTriMainLineXDirectionFlag           = .vduWorkspaceK ;
+vduPlotTriMainLineErrorTermLow             = vduWorkspaceA ; 'plot triangle' variables
+vduPlotTriMainLineErrorTermHigh            = vduWorkspaceB ; tracking the 'main line'
+vduPlotTriMainLineDeltaXLow                = vduWorkspaceC ;
+vduPlotTriMainLineDeltaXHigh               = vduWorkspaceD ;
+vduPlotTriMainLineDeltaYLow                = vduWorkspaceE ;
+vduPlotTriMainLineDeltaYHigh               = vduWorkspaceF ;
+vduPlotTriMainLineCurrentPointXLow         = vduWorkspaceG ;
+vduPlotTriMainLineCurrentPointXHigh        = vduWorkspaceH ;
+vduPlotTriMainLineCurrentPointYLow         = vduWorkspaceI ;
+vduPlotTriMainLineCurrentPointYHigh        = vduWorkspaceJ ;
+vduPlotTriMainLineXDirectionFlag           = vduWorkspaceK ;
 
-vduPlotTriMinorLineErrorTermLow            = .vduWorkspaceL ; 'plot triangle' variables
-vduPlotTriMinorLineErrorTermHigh           = .vduWorkspaceM ; tracking the 'minor line'
-vduPlotTriMinorLineDeltaXLow               = .vduWorkspaceN ;
-vduPlotTriMinorLineDeltaXHigh              = .vduWorkspaceO ;
-vduPlotTriMinorLineDeltaYLow               = .vduWorkspaceP ;
-vduPlotTriMinorLineDeltaYHigh              = .vduWorkspaceQ ;
-vduPlotTriMinorLineCurrentPointXLow        = .vduWorkspaceR ;
-vduPlotTriMinorLineCurrentPointXHigh       = .vduWorkspaceS ;
-vduPlotTriMinorLineCurrentPointYLow        = .vduWorkspaceT ;
-vduPlotTriMinorLineCurrentPointYHigh       = .vduWorkspaceU ;
-vduPlotTriMinorLineXDirectionFlag          = .vduWorkspaceV ;
+vduPlotTriMinorLineErrorTermLow            = vduWorkspaceL ; 'plot triangle' variables
+vduPlotTriMinorLineErrorTermHigh           = vduWorkspaceM ; tracking the 'minor line'
+vduPlotTriMinorLineDeltaXLow               = vduWorkspaceN ;
+vduPlotTriMinorLineDeltaXHigh              = vduWorkspaceO ;
+vduPlotTriMinorLineDeltaYLow               = vduWorkspaceP ;
+vduPlotTriMinorLineDeltaYHigh              = vduWorkspaceQ ;
+vduPlotTriMinorLineCurrentPointXLow        = vduWorkspaceR ;
+vduPlotTriMinorLineCurrentPointXHigh       = vduWorkspaceS ;
+vduPlotTriMinorLineCurrentPointYLow        = vduWorkspaceT ;
+vduPlotTriMinorLineCurrentPointYHigh       = vduWorkspaceU ;
+vduPlotTriMinorLineXDirectionFlag          = vduWorkspaceV ;
 
 vduPlotTriStorageForCoordinates            = $033E     ; eight bytes used when drawing a
                                                         ; triangle to remember the original
@@ -3840,6 +3840,35 @@ multiplyBy640Table:
                 .beword 30*640
                 .beword 31*640
 
+.if version==100 && subVersion==7
+multiplyBy40Table
+                .beword 0 * 40
+                .beword 1 * 40
+                .beword 2 * 40
+                .beword 3 * 40
+                .beword 4 * 40
+                .beword 5 * 40
+                .beword 6 * 40
+                .beword 7 * 40
+                .beword 8 * 40
+                .beword 9 * 40
+                .beword 10 * 40
+                .beword 11 * 40
+                .beword 12 * 40
+                .beword 13 * 40
+                .beword 14 * 40
+                .beword 15 * 40
+                .beword 16 * 40
+                .beword 17 * 40
+                .beword 18 * 40
+                .beword 19 * 40
+                .beword 20 * 40
+                .beword 21 * 40
+                .beword 22 * 40
+                .beword 23 * 40
+                .beword 24 * 40
+.endif
+
 textWindowBottomRowTable:
                 .byte 31                     ; Mode 0 - 32 rows
                 .byte 31                     ; Mode 1 - 32 rows
@@ -3879,11 +3908,12 @@ bytesPerCharacter:
 sixteenColourMODEMaskTable:
                 .byte %10101010
                 .byte %01010101
+fourColourMODEMaskTable:
                 .byte %10001000
                 .byte %01000100
                 .byte %00100010
                 .byte %00010001
-LC3C8:
+fontMaskTable:
                 .byte %10000000
                 .byte %01000000
                 .byte %00100000
@@ -3907,24 +3937,45 @@ numberOfColoursMinusOneInMODETable:
 
 LC3D6:
                 .byte $00
-LC3D7:
+
+; ***************************************************************************************
+; This table is used when setting .vduGraphicsColourByteOR and .vduGraphicsColourByteEOR
+; in .setGraphicsColourMaskXY. This table is used to help implement the GCOL Mode.
+;
+; GCOL Mode: 0=Normal, 1=OR, 2=AND, 3=EOR, 4=Invert
+;
+; See .setGraphicsColourMaskXY
+gcolPlotOptionsTable:
                 .byte $FF
-LC3D8:
                 .byte $00
                 .byte $00
                 .byte $FF
-LC3DB:
                 .byte $FF
                 .byte $FF
                 .byte $FF
 LC3DE:
                 .byte $00
-                .byte $00
-                .byte $FF
+
+; ***************************************************************************************
+;
+; Solid colour tables
+;
+; The following tables hold the byte values required to write a full solid byte of COLOUR N
+; on screen (N being the offset into the table). One table for the 2 colour MODEs, one for
+; 4 colour MODEs, and one for 16 colour MODEs.
+; See .vdu18EntryPoint.
+;
+; ***************************************************************************************
+twoColourMODEParameterTable:   
+                .byte %00000000
+                .byte %11111111
+
+fourColourMODEParameterTable:
                 .byte $00
                 .byte $0F
                 .byte $f0
                 .byte $ff
+sixteenColourMODEParameterTable:
                 .byte $00
                 .byte $03
                 .byte $0c
@@ -3970,7 +4021,8 @@ screenDisplayMemoryIndexTable:
                 .byte $03
                 .byte $03
 
-LC403:
+; Table of offsets into the VDU variables, used when line plotting
+vduGraphicsWindowBoundariesTable:
                 .byte $04
                 .byte $00
                 .byte $06
@@ -3996,9 +4048,19 @@ screenMemoryStartHigh:
 
 
 bytesPerRowLow:
+.if version==100 && subVersion==7
+                .byte <40
+.endif
                 .byte <320
                 .byte <640
-                
+.if version==100 && subVersion==7
+; Which multiplication table to use (low byte of address, assumes the multiplication tables are in the same page)
+multiplicationTabletoUseLow
+                .byte <multiplyBy40Table                           ; MODE 7
+                .byte <multiplyBy640Table                          ; MODE 4,5,6
+                .byte <multiplyBy640Table                          ; MODE 0,1,2,3
+.endif
+
 LC411:
                 .word LD29D
                 .word LD295
@@ -4009,13 +4071,55 @@ LC415:
                 .byte <routines_C415_C419
 LC419:
                 .byte >routines_C415_C419
-LC41D:
-                .byte $04
-                .byte $05
-                .byte $06
-                .byte $00
-                .byte $01
-                .byte $02
+
+.if version==100 && subVersion==7
+; ***************************************************************************************
+;
+; Converting characters in Teletext
+;
+; See teletext.png
+;
+; Writing printable characters (32-126) directly to the display memory in MODE 7
+; gives different results in three cases to printing via OSWRCH. In particular:
+;
+; Value     Write to Screen     Write to screen
+;           Memory Directly       via OSWRCH
+; ----------------------------------------------
+;   $23           £                   #
+;   $5F           #                   long dash
+;   $60           long dash           £
+; ----------------------------------------------
+;
+; ***************************************************************************************
+teletextCharacterConversionTable
+    .byte $23                                           ; when writing a character in MODE 7,
+                                                        ; replace each byte here with the next
+                                                        ; in the table
+    .byte $5F                                           ; when reading the character from the
+                                                        ; screen, replace each byte with the
+                                                        ; previous in the table
+    .byte $60                                           ;
+    .byte $23     
+.endif
+
+; ***************************************************************************************
+;
+; Soft character table offsets
+;
+; Converts the OSBYTE 20 parameter 1-6 (how much of the character set to 'explode', i.e.
+; which range of character definitions can be redefined) into the offset into the
+; .vduFontZoneAddressesHigh1 table, which stores the page addresses used to define characters
+; in an 'exploded' soft character set.
+; See .osbyte20EntryPoint
+;
+; ***************************************************************************************
+softCharacterRamAllocationTable:
+                .byte $04       ; 1 -> 4 = range of characters 128-159
+                .byte $05       ; 2 -> 5 = range of characters 160-191
+                .byte $06       ; 3 -> 6 = range of characters 192-223
+                .byte $00       ; 4 -> 0 = range of characters  32-63
+                .byte $01       ; 5 -> 1 = range of characters  64-95
+                .byte $02       ; 6 -> 2 = range of characters  96-127
 LC423:
                 .byte $FF
                 .byte $F0
@@ -4064,22 +4168,22 @@ vduChrEntryPoint:
                 ; handle cursor editing mode...
                 jsr exchangeTextCursorAndInputCursorValues
                 jsr setUpWriteCursor                    ; Remove soft cursor
-                bmi LC452                    ; Skip past if VDU21 set
-                cmp #$0D                     ; Jump if not <CR>
+                bmi LC452                               ; Skip past if VDU21 set
+                cmp #charRETURN                         ; Jump if not <CR>
                 bne LC452
-                lda #$BD                     ; b6+b1 - separate cursor+cursor editing
+                lda #$BD                                ; b6+b1 - separate cursor+cursor editing
                 jsr clearVDUStatusByteFlags
-                lsr $035F
-                lda #$0D                     ; Restore A=<CR>
+                lsr vduLastCursorStartRegisterValue
+                lda #charRETURN                         ; Restore A=<CR>
 LC452:
-                cmp #$7F                     ; Jump with <DEL>
+                cmp #charDELETE                         ; Jump with <DEL>
                 beq handleDeleteCharacter
-                cmp #$20                     ; Jump with control codes
-                bcc readVDUEntryPointAddressAndParameters
+                cmp #charSPACE                          ; Jump with control codes
+                bcc readVDUEntryPointAddressAndParameters       ; if (character less than space, i.e. a VDU control code) then branch
                 bit vduStatusByte
-                bmi LC464
-                jsr displayACharacter
-                jsr vdu9EntryPoint
+                bmi LC464                               ; if (screen disabled) then branch forward
+                jsr displayACharacter                   ; display a character
+                jsr vdu9EntryPoint                      ; and cursor right
 LC464:
                 jmp exitVDUCHR
 
@@ -4344,7 +4448,7 @@ LC572:
                 inc pagedModeCounter                    ; C577= EE 69 02    ni.
 LC57A:
                 ldx vduTextCursorYPosition                    ; C57A= AE 19 03    ...
-                cpx $030B                    ; C57D= EC 0B 03    l..
+                cpx vduTextWindowTop                    ; C57D= EC 0B 03    l..
                 beq LC588                    ; C580= F0 06       p.
                 dec vduTextCursorYPosition                    ; C582= CE 19 03    N..
                 jmp LCE42                    ; C585= 4C 42 CE    LBN
@@ -4358,7 +4462,7 @@ LC588:
                 jsr LC9D1                    ; C592= 20 D1 C9     QI
                 bne LC59A                    ; C595= D0 03       P.
 LC597:
-                jsr LCCDD                    ; C597= 20 DD CC     ]L
+                jsr scrollTextWindowDownwards                    ; C597= 20 DD CC     ]L
 LC59A:
                 jmp LC628                    ; C59A= 4C 28 C6    L(F
 
@@ -4445,7 +4549,7 @@ LC617:
                 jsr LC9E1                    ; C620= 20 E1 C9     aI
                 bne LC628                    ; C623= D0 03       P.
 LC625:
-                jsr LCD3B                    ; C625= 20 3B CD     ;M
+                jsr scrollTextWindowUpwards                    ; C625= 20 3B CD     ;M
 LC628:
                 jsr LCDE8                    ; C628= 20 E8 CD     hM
 LC62B:
@@ -4607,7 +4711,7 @@ vdu12EntryPoint:
                 jmp LCB9D                    ; C701= 4C 9D CB    L.K
 
 LC704:
-                ldx $030B                    ; C704= AE 0B 03    ...
+                ldx vduTextWindowTop                    ; C704= AE 0B 03    ...
 LC707:
                 stx vduTextCursorYPosition                    ; C707= 8E 19 03    ...
                 jsr LCDE8                    ; C70A= 20 E8 CD     hM
@@ -4652,7 +4756,7 @@ LC72A:
                 sta vduTextCursorXPosition                    ; C734= 8D 18 03    ...
                 lda vdu31ParamYCoordinate                    ; C737= AD 23 03    -#.
                 clc                          ; C73A= 18          .
-                adc $030B                    ; C73B= 6D 0B 03    m..
+                adc vduTextWindowTop                    ; C73B= 6D 0B 03    m..
                 sta vduTextCursorYPosition                    ; C73E= 8D 19 03    ...
                 jsr LCE24                    ; C741= 20 24 CE     $N
                 bcc LC6F5                    ; C744= 90 AF       ./
@@ -4789,7 +4893,7 @@ LC7CA:
                 clc                          ; C7D4= 18          .
                 adc $D8                      ; C7D5= 65 D8       eX
                 tax                          ; C7D7= AA          *
-                lda LC3DE,x                  ; C7D8= BD DE C3    =^C
+                lda twoColourMODEParameterTable-1,x                  ; C7D8= BD DE C3    =^C
                 sta $0357,y                  ; C7DB= 99 57 03    .W.
                 cpy #$02                     ; C7DE= C0 02       @.
                 bcs LC7EF                    ; C7E0= B0 0D       0.
@@ -5052,7 +5156,7 @@ vdu23EntryPoint:
                 lsr a                        ; C8FE= 4A          J
                 tax                          ; C8FF= AA          *
 LC900:
-                lda LC3C8,x                  ; C900= BD C8 C3    =HC
+                lda fontMaskTable,x                  ; C900= BD C8 C3    =HC
                 bit $0367                    ; C903= 2C 67 03    ,g.
                 bne LC928                    ; C906= D0 20       P
                 ora $0367                    ; C908= 0D 67 03    .g.
@@ -5127,7 +5231,7 @@ LC962:
                 jsr LC97A                    ; C962= 20 7A C9     zI
                 ldy #$00                     ; C965= A0 00        .
 LC967:
-                sty $035F                    ; C967= 8C 5F 03    ._.
+                sty vduLastCursorStartRegisterValue                    ; C967= 8C 5F 03    ._.
                 rts                          ; C96A= 60          `
 
 LC96B:
@@ -5162,7 +5266,7 @@ vdu25EntryPoint:
 
 LC98E:
                 clc                          ; C98E= 18          .
-                lda $035F                    ; C98F= AD 5F 03    -_.
+                lda vduLastCursorStartRegisterValue                    ; C98F= AD 5F 03    -_.
                 adc $034A                    ; C992= 6D 4A 03    mJ.
                 sta $034A                    ; C995= 8D 4A 03    .J.
                 lda $034B                    ; C998= AD 4B 03    -K.
@@ -5310,14 +5414,14 @@ LCA87:
                 iny                          ; CA87= C8          H
                 tya                          ; CA88= 98          .
                 ldy #$00                     ; CA89= A0 00        .
-                sty $034D                    ; CA8B= 8C 4D 03    .M.
+                sty vduTextWindowWidthInBytesHigh                    ; CA8B= 8C 4D 03    .M.
                 sta $034C                    ; CA8E= 8D 4C 03    .L.
                 lda vduBytesPerCharacter                    ; CA91= AD 4F 03    -O.
                 lsr a                        ; CA94= 4A          J
                 beq LCAA0                    ; CA95= F0 09       p.
 LCA97:
                 asl $034C                    ; CA97= 0E 4C 03    .L.
-                rol $034D                    ; CA9A= 2E 4D 03    .M.
+                rol vduTextWindowWidthInBytesHigh                    ; CA9A= 2E 4D 03    .M.
                 lsr a                        ; CA9D= 4A          J
                 bcc LCA97                    ; CA9E= 90 F7       .w
 LCAA0:
@@ -5348,7 +5452,7 @@ vdu127EntryPoint:
                 sta $DC                      ; CAB3= 85 DC       .\
                 lda #$C0                     ; CAB5= A9 C0       )@
                 sta $DD                      ; CAB7= 85 DD       .]
-                jmp LCEE2                    ; CAB9= 4C E2 CE    LbN
+                jmp displayACharacterAtAddress                    ; CAB9= 4C E2 CE    LbN
 
 LCABC:
                 lda #$7F                     ; CABC= A9 7F       ).
@@ -5387,7 +5491,7 @@ LCADF:
                 lsr a                        ; CAF5= 4A          J
                 sec                          ; CAF6= 38          8
                 adc pagedModeCounter                    ; CAF7= 6D 69 02    mi.
-                adc $030B                    ; CAFA= 6D 0B 03    m..
+                adc vduTextWindowTop                    ; CAFA= 6D 0B 03    m..
                 cmp $0309                    ; CAFD= CD 09 03    M..
                 bcc LCB0E                    ; CB00= 90 0C       ..
                 clc                          ; CB02= 18          .
@@ -5460,7 +5564,7 @@ setMODE:
                 php
                 sei
                 sta vduCurrentScreenMODE
-                lda miscRegisterCopy
+                lda miscellaneousControlRegisterCopy
                 and #$C7
                 ora vduCurrentScreenMODE
                 jsr LE495
@@ -5471,10 +5575,10 @@ setMODE:
                 php                          																; CB36= 08          .
                 sei                          																; CB37= 78          x
                 sta internalCassetteFilingSystemVar         												; CB38= 8D F4 02    .t.
-                lda miscRegisterCopy                    													; CB3B= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    													; CB3B= AD 82 02    -..
                 and #~(7<<miscellaneousControlRegister.displayModeShift)&$ff
                 ora internalCassetteFilingSystemVar         												; CB40= 0D F4 02    .t.
-                sta miscRegisterCopy                    													; CB43= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    													; CB43= 8D 82 02    ...
                 sta miscellaneousControlRegister            												; CB46= 8D 07 FE    ..~
 .endif
 
@@ -5709,7 +5813,7 @@ LCC73:
 LCC7B:
                 cpx $0246                    ; CC7B= EC 46 02    lF.
                 bcs LCC8B                    ; CC7E= B0 0B       0.
-                ldy LC41D,x                  ; CC80= BC 1D C4    <.D
+                ldy softCharacterRamAllocationTable,x                  ; CC80= BC 1D C4    <.D
                 sta $0368,y                  ; CC83= 99 68 03    .h.
                 adc #$01                     ; CC86= 69 01       i.
                 inx                          ; CC88= E8          h
@@ -5729,7 +5833,7 @@ LCC96:
 LCC9E:
                 lda $0309                    ; CC9E= AD 09 03    -..
                 bcc LCCA6                    ; CCA1= 90 03       ..
-                lda $030B                    ; CCA3= AD 0B 03    -..
+                lda vduTextWindowTop                    ; CCA3= AD 0B 03    -..
 LCCA6:
                 bvs LCCB0                    ; CCA6= 70 08       p.
                 sta vduTextCursorYPosition                    ; CCA8= 8D 19 03    ...
@@ -5750,11 +5854,57 @@ LCCBD:
                 inc $0365                    ; CCBD= EE 65 03    ne.
                 rts                          ; CCC0= 60          `
 
+; ***************************************************************************************
+;
+; Set up a write cursor
+;
+; When entering a line of text, if the user presses a cursor key then two cursors are shown:
+; The WRITE cursor is shown at the point of text entry (looks like a solid block character),
+; and is the position at which new characters will be input.
+; The READ cursor (shown as a flashing underline) is positioned by the cursor keys.
+; The COPY key reads the character under the READ cursor and enters it at WRITE cursor.
+;
+; Editing finishes when RETURN is pressed.
+;
+; ***************************************************************************************
 setUpWriteCursor:
                 php                          ; CCC1= 08          .
                 pha                          ; CCC2= 48          H
                 ldy vduBytesPerCharacter                    ; CCC3= AC 4F 03    ,O.
                 dey                          ; CCC6= 88          .
+.if version==100 && subVersion==7
+                bne restoreWriteCursorNonMODE7                     ; if (not MODE 7) then branch
+                lda vduMODE7CursorCharacter                        ; get MODE 7 write character
+                                                                    ; cursor character $7F
+                sta (vduWriteCursorScreenAddressLow),y             ; store it at top scan line of current
+                                                                    ; character
+pullTwiceAndExit:
+                pla                                                 ; pull A
+pullAndExit:
+                plp                                                 ; pull flags
+exit8:
+                rts                                                 ;
+
+; ***************************************************************************************
+;
+; Restore a normal cursor
+;
+; ***************************************************************************************
+restoreWriteCursor:
+                php                                                 ; push flags
+                pha                                                 ; push A
+                ldy vduBytesPerCharacter                           ;
+                dey                                                 ; Y = bytes per character - 1
+                bne restoreWriteCursorNonMODE7                     ; if (not MODE 7) then branch
+                lda (vduWriteCursorScreenAddressLow),y             ; read from cursor screen address
+                sta vduMODE7CursorCharacter                        ; store it
+                lda vduTeletextCharacterForCursor                  ; MODE 7 write cursor character
+                sta (vduWriteCursorScreenAddressLow),y             ; store it in MODE 7 screen address
+                jmp pullTwiceAndExit                               ; and exit
+
+; ***************************************************************************************
+restoreWriteCursorNonMODE7:     
+.endif
                 lda #$FF                     ; CCC7= A9 FF       ).
                 cpy #$1F                     ; CCC9= C0 1F       @.
                 bne LCCCF                    ; CCCB= D0 02       P.
@@ -5773,7 +5923,12 @@ LCCDB:
 LCCDC:
                 rts                          ; CCDC= 60          `
 
-LCCDD:
+; ***************************************************************************************
+;
+; Software scroll text window downwards
+;
+; ***************************************************************************************
+scrollTextWindowDownwards:
                 jsr LCD97                    ; CCDD= 20 97 CD     .M
                 lda $0309                    ; CCE0= AD 09 03    -..
                 sta vduTextCursorYPosition                    ; CCE3= 8D 19 03    ...
@@ -5795,7 +5950,7 @@ LCCFF:
                 jsr LCAC9                    ; CCFF= 20 C9 CA     IJ
                 jsr LCAC9                    ; CD02= 20 C9 CA     IJ
                 bmi LCCF9                    ; CD05= 30 F2       0r
-                jsr LCD74                    ; CD07= 20 74 CD     tM
+                jsr copyCharacterRow                    ; CD07= 20 74 CD     tM
 LCD0A:
                 lda $DA                      ; CD0A= A5 DA       %Z
                 ldx $D8                      ; CD0C= A6 D8       &X
@@ -5829,10 +5984,14 @@ LCD26:
                 dec $D8                      ; CD36= C6 D8       FX
                 bne LCD26                    ; CD38= D0 EC       Pl
                 rts                          ; CD3A= 60          `
-
-LCD3B:
+; ***************************************************************************************
+;
+; Software scroll text window upwards
+;
+; ***************************************************************************************
+scrollTextWindowUpwards:
                 jsr LCD97                    ; CD3B= 20 97 CD     .M
-                ldy $030B                    ; CD3E= AC 0B 03    ,..
+                ldy vduTextWindowTop                    ; CD3E= AC 0B 03    ,..
                 sty vduTextCursorYPosition                    ; CD41= 8C 19 03    ...
                 jsr LCE42                    ; CD44= 20 42 CE     BN
 LCD47:
@@ -5852,7 +6011,7 @@ LCD58:
 LCD5E:
                 jsr LCAC9                    ; CD5E= 20 C9 CA     IJ
                 bmi LCD58                    ; CD61= 30 F5       0u
-                jsr LCD74                    ; CD63= 20 74 CD     tM
+                jsr copyCharacterRow                    ; CD63= 20 74 CD     tM
 LCD66:
                 lda $DA                      ; CD66= A5 DA       %Z
                 ldx $D8                      ; CD68= A6 D8       &X
@@ -5861,8 +6020,18 @@ LCD66:
                 dec $DC                      ; CD6E= C6 DC       F\
                 bne LCD47                    ; CD70= D0 D5       PU
                 beq LCD16                    ; CD72= F0 A2       p"
-LCD74:
-                ldx $034D                    ; CD74= AE 4D 03    .M.
+
+; ***************************************************************************************
+;
+; Copy bytes of one character row of the text window
+;
+; On Entry:
+;       .vduTempStoreDA/DB                   is address to copy from
+;       .vduWriteCursorScreenAddressLow/High is the destination address
+;       .vduTextWindowWidthInBytesLow/High   is number of bytes to copy
+; ***************************************************************************************
+copyCharacterRow:
+                ldx vduTextWindowWidthInBytesHigh                    ; CD74= AE 4D 03    .M.
                 beq LCD89                    ; CD77= F0 10       p.
                 ldy #$00                     ; CD79= A0 00        .
 LCD7B:
@@ -5890,7 +6059,7 @@ LCD97:
                 jsr LCD16                    ; CD97= 20 16 CD     .M
                 sec                          ; CD9A= 38          8
                 lda $0309                    ; CD9B= AD 09 03    -..
-                sbc $030B                    ; CD9E= ED 0B 03    m..
+                sbc vduTextWindowTop                    ; CD9E= ED 0B 03    m..
                 sta $DC                      ; CDA1= 85 DC       .\
                 bne LCDAA                    ; CDA3= D0 05       P.
                 pla                          ; CDA5= 68          h
@@ -5984,7 +6153,7 @@ LCE24:
                 bpl LCE22                    ; CE31= 10 EF       .o
 LCE33:
                 ldx vduTextCursorYPosition                    ; CE33= AE 19 03    ...
-                cpx $030B                    ; CE36= EC 0B 03    l..
+                cpx vduTextWindowTop                    ; CE36= EC 0B 03    l..
                 bmi LCE22                    ; CE39= 30 E7       0g
                 cpx $0309                    ; CE3B= EC 09 03    l..
                 beq LCE42                    ; CE3E= F0 02       p.
@@ -6086,11 +6255,15 @@ LCED5:
                 stx $DC
                 ldx #>LC42B
                 stx $DD
-                bne LCEE2
+                bne displayACharacterAtAddress
 
 displayACharacter:
+.if version==100 && subVersion==7
+                ldx vduNumberOfLogicalColoursMinusOne              ; number of logical colours less 1
+                beq displayCharacterMODE7   
+.endif
                 jsr getCharacterDefinitionAddress                    ; CEDF= 20 4F CF     OO
-LCEE2:
+displayACharacterAtAddress:
                 ldx vduNumberOfLogicalColoursMinusOne                    ; CEE2= AE 60 03    .`.
                 lda vduStatusByte                      ; CEE5= A5 D0       %P
                 and #$20                     ; CEE7= 29 20       )
@@ -6107,6 +6280,24 @@ LCEF3:
                 dey                          ; CEFB= 88          .
                 bpl LCEF3                    ; CEFC= 10 F5       .u
                 rts                          ; CEFE= 60          `
+.if version==100 && subVersion==7
+; ***************************************************************************************
+displayCharacterMODE7
+                ldy #$2                                     ; Y=2, loop counter/index into the teletext conversion table
+-                                            
+                cmp teletextCharacterConversionTable,y     ; compare with teletext conversion table
+                beq convertMODE7Character                   ; if (found character to convert) then branch
+                dey                                         ; Y=Y-1
+                bpl -                                       ; loop back until done
+writeByteToMODE7Screen
+                sta vduWriteCursorScreenAddressLow,x        ; write byte to screen
+                rts         
+
+; ***************************************************************************************
+convertMODE7Character
+                lda teletextCharacterConversionTable + 1,y         ; convert with teletext conversion table
+                bne writeByteToMODE7Screen                         ; ALWAYS branch back to write it
+.endif
 
 LCEFF:
                 lda ($DC),y                  ; CEFF= B1 DC       1\
@@ -6175,7 +6366,7 @@ getCharacterDefinitionAddress:
                 and #$03                     ; CF58= 29 03       ).
                 adc #$BF                     ; CF5A= 69 BF       i?
                 tay                          ; CF5C= A8          (
-                lda LC3C8,x                  ; CF5D= BD C8 C3    =HC
+                lda fontMaskTable,x                  ; CF5D= BD C8 C3    =HC
                 bit $0367                    ; CF60= 2C 67 03    ,g.
                 beq LCF68                    ; CF63= F0 03       p.
                 ldy $0367,x                  ; CF65= BC 67 03    <g.
@@ -6238,12 +6429,12 @@ LCFBF:
 
 LCFC4:
                 txa                          ; CFC4= 8A          .
-                ora LC3D7,y                  ; CFC5= 19 D7 C3    .WC
-                eor LC3D8,y                  ; CFC8= 59 D8 C3    YXC
+                ora gcolPlotOptionsTable,y                  ; CFC5= 19 D7 C3    .WC
+                eor gcolPlotOptionsTable + 1,y                  ; CFC8= 59 D8 C3    YXC
                 sta $DE                      ; CFCB= 85 DE       .^
                 txa                          ; CFCD= 8A          .
-                ora LC3D6,y                  ; CFCE= 19 D6 C3    .VC
-                eor LC3DB,y                  ; CFD1= 59 DB C3    Y[C
+                ora gcolPlotOptionsTable - 1,y                  ; CFCE= 19 D6 C3    .VC
+                eor gcolPlotOptionsTable + 4,y                  ; CFD1= 59 DB C3    Y[C
                 sta $DF                      ; CFD4= 85 DF       ._
                 rts                          ; CFD6= 60          `
 
@@ -6529,7 +6720,7 @@ LD1A7:
                 sta $0334                    ; D1B5= 8D 34 03    .4.
                 bit $D9                      ; D1B8= 24 D9       $Y
                 bvs LD1E5                    ; D1BA= 70 29       p)
-                lda LC403,x                  ; D1BC= BD 03 C4    =.D
+                lda vduGraphicsWindowBoundariesTable,x                  ; D1BC= BD 03 C4    =.D
                 tax                          ; D1BF= AA          *
                 sec                          ; D1C0= 38          8
                 lda $0300,x                  ; D1C1= BD 00 03    =..
@@ -7104,7 +7295,7 @@ osbyte86:
                 tax                          ; D564= AA          *
                 lda vduTextCursorYPosition                    ; D565= AD 19 03    -..
                 sec                          ; D568= 38          8
-                sbc $030B                    ; D569= ED 0B 03    m..
+                sbc vduTextWindowTop                    ; D569= ED 0B 03    m..
                 tay                          ; D56C= A8          (
 LD56D:
                 rts                          ; D56D= 60          `
@@ -7492,7 +7683,7 @@ LD7E5:
                 jsr setUpWriteCursor                    ; D7FD= 20 C1 CC     AL
                 lda #$02                     ; D800= A9 02       ).
                 jsr LC523                    ; D802= 20 23 C5     #E
-                asl $035F                    ; D805= 0E 5F 03    ._.
+                asl vduLastCursorStartRegisterValue                    ; D805= 0E 5F 03    ._.
 LD808:
                 lda #$BF                     ; D808= A9 BF       )?
                 jsr clearVDUStatusByteFlags                    ; D80A= 20 30 C5     0E
@@ -7796,12 +7987,12 @@ LD965:
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; D96D= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; D96D= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; D970= 8D 07 FE    ..~
 .endif
                 sta cassetteDataShiftRegister                    ; D973= 8D 04 FE    ..~
                 ldx #intStatusAndControlRegister.rtcIRQ|intStatusAndControlRegister.displayEndIRQ
-                stx $025B                    ; D978= 8E 5B 02    .[.
+                stx ulaInterruptMask                    ; D978= 8E 5B 02    .[.
                 stx intStatusAndControlRegister                    ; D97B= 8E 00 FE    ..~
                 jsr osbyte74                    ; D97E= 20 76 E9     vi
                 ldx softKeyConsistencyFlag                    ; D981= AE 84 02    ...
@@ -7891,7 +8082,7 @@ LD9E0:
 .if version==300
                 jsr LF0B5_300
 .endif
-                lda startUpOptions                    ; Get startup options
+                lda startUpOptions           ; Get startup options
                 jsr initialiseScreenOnReset  ; Use it to select screen mode
                 ldy #$CA                     ; Enter f10 into keyboard buffer
                 jsr LE25F
@@ -8141,7 +8332,7 @@ irq1EntryPoint:
                 tya                          ; A=ULA IRQ flags Form
 ; Form effective IRQ flags: mask off uninteresting IRQs (as set by
 ; OSBYTE 203), and mask off bit 0.
-                and $025B                    ; mask off uninteresting IRQs
+                and ulaInterruptMask                    ; mask off uninteresting IRQs
                 and #%11111110               ; ignore bit 0
                 tax                          ; X=effective IRQ flags
 ; This bit appears to be irrelevant. See https://www.stardot.org.uk/forums/viewtopic.php?p=471253#p471253
@@ -9507,13 +9698,13 @@ osbyte7D:
                 jmp $0403                    ; Inform Tube and return
 
 osbyte89:
-                lda miscRegisterCopy                    ; E48A= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; E48A= AD 82 02    -..
                 and #$BF                     ; E48D= 29 BF       )?
                 cpx #$00                     ; E48F= E0 00       `.
                 beq LE495                    ; E491= F0 02       p.
                 ora #$40                     ; E493= 09 40       .@
 LE495:
-                sta miscRegisterCopy                    ; E495= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; E495= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; E498= 8D 07 FE    ..~
                 rts                          ; E49B= 60          `
 
@@ -10191,14 +10382,14 @@ callEVENTV:
 LE7E5:
                 bcc LE7F9                    ; E7E5= 90 12       ..
                 pha                          ; E7E7= 48          H
-                lda miscRegisterCopy                    ; E7E8= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; E7E8= AD 82 02    -..
                 ora #$80                     ; E7EB= 09 80       ..
                 sta miscellaneousControlRegister                    ; E7ED= 8D 07 FE    ..~
                 and #$7F                     ; E7F0= 29 7F       ).
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; E7F2= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; E7F2= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; E7F5= 8D 07 FE    ..~
 .endif
                 pla                          ; E7F8= 68          h
@@ -10395,15 +10586,15 @@ LE92D:
                 bne LE975                    ; E932= D0 41       PA
                 php                          ; E934= 08          .
                 sei                          ; E935= 78          x
-                lda miscRegisterCopy                    ; E936= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; E936= AD 82 02    -..
                 and #$F9                     ; E939= 29 F9       )y
                 ora $0820                    ; E93B= 0D 20 08    . .
-                cmp miscRegisterCopy                    ; E93E= CD 82 02    M..
+                cmp miscellaneousControlRegisterCopy                    ; E93E= CD 82 02    M..
                 beq LE949                    ; E941= F0 06       p.
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; E943= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; E943= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; E946= 8D 07 FE    ..~
 .endif
 LE949:
@@ -10658,7 +10849,7 @@ LEABA:
                 stx $0242                    ; EABC= 8E 42 02    .B.
 LEABF:
                 php                          ; EABF= 08          .
-                lda miscRegisterCopy                    ; EAC0= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; EAC0= AD 82 02    -..
                 and #$7F                     ; EAC3= 29 7F       ).
                 pha                          ; EAC5= 48          H
                 lda #$10                     ; EAC6= A9 10       ).
@@ -10673,12 +10864,12 @@ LEABF:
                 pha                          ; EAD0= 48          H
 LEAD1:
                 pla                          ; EAD1= 68          h
-                cmp miscRegisterCopy                    ; EAD2= CD 82 02    M..
+                cmp miscellaneousControlRegisterCopy                    ; EAD2= CD 82 02    M..
                 beq LEADD                    ; EAD5= F0 06       p.
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; EAD7= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; EAD7= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; EADA= 8D 07 FE    ..~
 .endif
 LEADD:
@@ -13326,13 +13517,13 @@ LF8BC:
 LF8C9:
                 php                          ; F8C9= 08          .
                 sei                          ; F8CA= 78          x
-                lda miscRegisterCopy                    ; F8CB= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; F8CB= AD 82 02    -..
                 and #$F9                     ; F8CE= 29 F9       )y
                 ora #$04                     ; F8D0= 09 04       ..
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; F8D2= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; F8D2= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; F8D5= 8D 07 FE    ..~
 .endif
                 plp                          ; F8D8= 28          (
@@ -13651,12 +13842,12 @@ LFA8C:
                 bmi LFAAA                    ; FA96= 30 12       0.
                 lda #$01                     ; FA98= A9 01       ).
                 sta $EA                      ; FA9A= 85 EA       .j
-                lda miscRegisterCopy                    ; FA9C= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; FA9C= AD 82 02    -..
                 and #$F9                     ; FA9F= 29 F9       )y
 .if version==300
                 jsr LE495
 .else
-                sta miscRegisterCopy                    ; FAA1= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; FAA1= 8D 82 02    ...
                 sta miscellaneousControlRegister                    ; FAA4= 8D 07 FE    ..~
 .endif
                 plp                          ; FAA7= 28          (
@@ -13672,9 +13863,9 @@ LFAAA:
 LFAB0:
                 php                          ; FAB0= 08          .
                 sei                          ; FAB1= 78          x
-                lda $025B                    ; FAB2= AD 5B 02    -[.
+                lda ulaInterruptMask                    ; FAB2= AD 5B 02    -[.
                 and #~(intStatusAndControlRegister.highToneIRQ|intStatusAndControlRegister.txEmptyIRQ|intStatusAndControlRegister.rxFullIRQ)&$ff
-                sta $025B                    ; FAB7= 8D 5B 02    .[.
+                sta ulaInterruptMask                    ; FAB7= 8D 5B 02    .[.
                 sta intStatusAndControlRegister                    ; FABA= 8D 00 FE    ..~
                 plp                          ; FABD= 28          (
                 rts                          ; FABE= 60          `
@@ -13682,11 +13873,11 @@ LFAB0:
 LFABF:
 .if version==300
                 ldx #$04
-                lda $025b
+                lda ulaInterruptMask
                 and #$af
                 ora #$20
 .else
-                lda $025B                    ; FABF= AD 5B 02    -[.
+                lda ulaInterruptMask                    ; FABF= AD 5B 02    -[.
                 and #$AF                     ; FAC2= 29 AF       )/
                 ora #$20                     ; FAC4= 09 20       .
                 tay                          ; FAC6= A8          (
@@ -13700,7 +13891,7 @@ LFACD:
 .if version==100
                 stx $CA                      ; FAD2= 86 CA       .J
 .endif
-                lda $025B                    ; FAD4= AD 5B 02    -[.
+                lda ulaInterruptMask                    ; FAD4= AD 5B 02    -[.
                 and #$DF                     ; FAD7= 29 DF       )_
                 ora #$50                     ; FAD9= 09 50       .P
 .if version==100
@@ -13716,15 +13907,15 @@ LFADD:
                 php
                 sei
                 pha
-                lda miscRegisterCopy
+                lda miscellaneousControlRegisterCopy
                 and #~(miscellaneousControlRegister.commsModeMask)&$ff
-                sta miscRegisterCopy
+                sta miscellaneousControlRegisterCopy
                 pla
-                ora miscRegisterCopy
-                sta miscRegisterCopy
+                ora miscellaneousControlRegisterCopy
+                sta miscellaneousControlRegisterCopy
                 plp
                 sta miscellaneousControlRegister
-                sty $025b
+                sty ulaInterruptMask
                 sty intStatusAndControlRegister
                 rts
 .else
@@ -13732,13 +13923,13 @@ LFADD:
                 sta internalCassetteFilingSystemVar                    ; FADF= 8D F4 02    .t.
                 php                          ; FAE2= 08          .
                 sei                          ; FAE3= 78          x
-                lda miscRegisterCopy                    ; FAE4= AD 82 02    -..
+                lda miscellaneousControlRegisterCopy                    ; FAE4= AD 82 02    -..
                 and #~(miscellaneousControlRegister.commsModeMask)&$ff
                 ora internalCassetteFilingSystemVar                    ; FAE9= 0D F4 02    .t.
-                sta miscRegisterCopy                    ; FAEC= 8D 82 02    ...
+                sta miscellaneousControlRegisterCopy                    ; FAEC= 8D 82 02    ...
                 plp                          ; FAEF= 28          (
                 sta miscellaneousControlRegister                    ; FAF0= 8D 07 FE    ..~
-                sty $025B                    ; FAF3= 8C 5B 02    .[.
+                sty ulaInterruptMask                    ; FAF3= 8C 5B 02    .[.
                 sty intStatusAndControlRegister                    ; FAF6= 8C 00 FE    ..~
                 rts                          ; FAF9= 60          `
 .endif
