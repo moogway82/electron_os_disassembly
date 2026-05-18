@@ -4798,7 +4798,7 @@ LC769:
 vdu16EntryPoint:
                 lda vduPixelsPerByteMinusOne                    ; C76C= AD 61 03    -a.
                 beq LC7A4                    ; C76F= F0 33       p3
-                ldx $035A                    ; C771= AE 5A 03    .Z.
+                ldx vduBackgroundGraphicsColour                    ; C771= AE 5A 03    .Z.
                 ldy $035C                    ; C774= AC 5C 03    ,\.
                 jsr LCFC4                    ; C777= 20 C4 CF     DO
                 ldx #$00                     ; C77A= A2 00       ".
@@ -4906,7 +4906,7 @@ LC7CA:
 
 LC7EF:
                 lda vdu18ParameterGCOLNumber                   ; C7EF= AD 22 03    -".
-                sta $0359,y                  ; C7F2= 99 59 03    .Y.
+                sta vduForegroundGraphicsColour,y                  ; C7F2= 99 59 03    .Y.
                 rts                          ; C7F5= 60          `
 
 ; ***************************************************************************************
@@ -5457,9 +5457,9 @@ vdu127EntryPoint:
 LCABC:
                 lda #$7F                     ; CABC= A9 7F       ).
                 jsr getCharacterDefinitionAddress                    ; CABE= 20 4F CF     OO
-                ldx $035A                    ; CAC1= AE 5A 03    .Z.
+                ldx vduBackgroundGraphicsColour                    ; CAC1= AE 5A 03    .Z.
                 ldy #$00                     ; CAC4= A0 00        .
-                jmp LCE94                    ; CAC6= 4C 94 CE    L.N
+                jmp plotACharacterWithXYAsGraphicsColourAndGCOLMode                    ; CAC6= 4C 94 CE    L.N
 
 LCAC9:
                 pha                          ; CAC9= 48          H
@@ -6203,13 +6203,31 @@ LCE33:
 ;
 ; ***************************************************************************************
 setTextCursorScreenAddresses:
-                lda vduTextCursorYPosition                    ; CE42= AD 19 03    -..
-                asl a                        ; CE45= 0A          .
-                tay                          ; CE46= A8          (
-                lda multiplyBy640Table,y                  ; CE47= B9 6D C3    9mC
-                sta $D7                      ; CE4A= 85 D7       .W
-                lda multiplyBy640Table+1,y                  ; CE4C= B9 6E C3    9nC
-                ldy vduBytesPerCharacterRowHigh                    ; CE4F= AC 53 03    ,S.
+                lda vduTextCursorYPosition          ; current text line                         ; CE42= AD 19 03    -..
+                asl a                               ; multiply by two to get table offset       ; CE45= 0A          .
+                tay                                 ; Y=A                                       ; CE46= A8          (
+
+.if version==100 && subVersion==7
+                lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
+.else
+                lda multiplyBy640Table,y
+                sta $D7                             ; .vduWriteCursorScreenAddressHigh=A
+                iny                                 ; Y=Y+1
+                lda #2                              ; A=2
+                and vduCurrentScreenMODEGroup      ; AND with MODE group:
+                                                    ;   0 = 20k (MODE 0,1,2)
+                                                    ;   1 = 16k (MODE 3)
+                                                    ;   2 = 10k (MODE 4,5)
+                                                    ;   3 = 8k (MODE 6)
+                                                    ;   4 = 1k (MODE 7)
+                php                                 ; save flags
+                lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
+                plp                                 ; pull flags
+                beq LCE58
+.endif
+                sta $D7                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
+                lda multiplyBy640Table+1,y                                                      ; CE4C= B9 6E C3    9nC
+                ldy vduBytesPerCharacterRowHigh                                                 ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
                 lsr $D7                      ; CE55= 46 D7       FW
@@ -6222,29 +6240,38 @@ LCE58:
                 tay                          ; CE62= A8          (
                 lda vduTextCursorXPosition                    ; CE63= AD 18 03    -..
                 ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
-                cpx #$10                     ; CE69= E0 10       `.
-                beq LCE70                    ; CE6B= F0 03       p.
-                bcc LCE71                    ; CE6D= 90 02       ..
+.if version==100 && subVersion==7
+                dex                                 ; X=X-1
+                beq mode7Cursor                     ; if (in MODE 7) then branch
+.endif
+                cpx #15                     ; CE69= E0 10       `.
+                beq mode1or5Cursor                    ; CE6B= F0 03       p.
+                bcc mode0346Cursor                    ; CE6D= 90 02       ..
                 asl a                        ; CE6F= 0A          .
-LCE70:
+mode1or5Cursor:
                 asl a                        ; CE70= 0A          .
-LCE71:
+mode0346Cursor:
                 asl a                        ; CE71= 0A          .
                 asl a                        ; CE72= 0A          .
-                bcc LCE77                    ; CE73= 90 02       ..
+                bcc skipIncs                    ; CE73= 90 02       ..
                 iny                          ; CE75= C8          H
                 iny                          ; CE76= C8          H
-LCE77:
+skipIncs:
                 asl a                        ; CE77= 0A          .
-                bcc LCE7C                    ; CE78= 90 02       ..
+                bcc skipInc                    ; CE78= 90 02       ..
                 iny                          ; CE7A= C8          H
+mode7Cursor:
                 clc                          ; CE7B= 18          .
-LCE7C:
+skipInc:
                 adc $D6                      ; CE7C= 65 D6       eV
                 sta $D6                      ; CE7E= 85 D6       .V
                 tax                          ; CE80= AA          *
                 tya                          ; CE81= 98          .
                 adc #$00                     ; CE82= 69 00       i.
+.if version==100 && subVersion==7
+                sta vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
+
+.endif
                 bpl LCE8A                    ; CE84= 10 04       ..
                 sec                          ; CE86= 38          8
                 sbc vduScreenSizeHighByte                    ; CE87= ED 54 03    mT.
@@ -6253,17 +6280,22 @@ LCE8A:
                 clc                          ; CE8C= 18          .
                 rts                          ; CE8D= 60          `
 
-LCE8E:
-                ldx $0359                    ; CE8E= AE 59 03    .Y.
-                ldy $035B                    ; CE91= AC 5B 03    ,[.
-LCE94:
+; ***************************************************************************************
+;
+; Display a character at the current graphics cursor
+;
+; ***************************************************************************************
+plotACharacterAtGraphicsCursor:
+                ldx vduForegroundGraphicsColour                    ; CE8E= AE 59 03    .Y.
+                ldy vduForegroundGCOLMode                    ; CE91= AC 5B 03    ,[.
+plotACharacterWithXYAsGraphicsColourAndGCOLMode:
                 jsr LCFC4                    ; CE94= 20 C4 CF     DO
                 jsr LD39D                    ; CE97= 20 9D D3     .S
                 ldy #$00                     ; CE9A= A0 00        .
-LCE9C:
+displayNextRowOfCharacter:
                 sty $DA                      ; CE9C= 84 DA       .Z
                 lda ($DC),y                  ; CE9E= B1 DC       1\
-                beq LCEB5                    ; CEA0= F0 13       p.
+                beq characterPatternZero                    ; CEA0= F0 13       p.
                 sta $DB                      ; CEA2= 85 DB       .[
 LCEA4:
                 bpl LCEA9                    ; CEA4= 10 03       ..
@@ -6275,7 +6307,7 @@ LCEA9:
 LCEB1:
                 asl $DB                      ; CEB1= 06 DB       .[
                 bne LCEA4                    ; CEB3= D0 EF       Po
-LCEB5:
+characterPatternZero:
                 ldx #$28                     ; CEB5= A2 28       "(
                 ldy #$24                     ; CEB7= A0 24        $
                 jsr LD399                    ; CEB9= 20 99 D3     .S
@@ -6287,7 +6319,7 @@ LCEC4:
                 ldy $DA                      ; CEC7= A4 DA       $Z
                 iny                          ; CEC9= C8          H
                 cpy #$08                     ; CECA= C0 08       @.
-                bne LCE9C                    ; CECC= D0 CE       PN
+                bne displayNextRowOfCharacter                    ; CECC= D0 CE       PN
                 ldx #$28                     ; CECE= A2 28       "(
                 ldy #$24                     ; CED0= A0 24        $
                 jmp LD3A1                    ; CED2= 4C A1 D3    L!S
@@ -6311,7 +6343,7 @@ displayACharacterAtAddress:
                 ldx vduNumberOfLogicalColoursMinusOne                    ; CEE2= AE 60 03    .`.
                 lda vduStatusByte                      ; CEE5= A5 D0       %P
                 and #$20                     ; CEE7= 29 20       )
-                bne LCE8E                    ; CEE9= D0 A3       P#
+                bne plotACharacterAtGraphicsCursor                    ; CEE9= D0 A3       P#
                 ldy #$07                     ; CEEB= A0 07        .
                 cpx #$03                     ; CEED= E0 03       `.
                 beq LCEFF                    ; CEEF= F0 0E       p.
@@ -6436,8 +6468,8 @@ LCF71:
                 bne LCF91                    ; CF87= D0 08       P.
 LCF89:
                 tax                          ; CF89= AA          *
-                ldy $035B,x                  ; CF8A= BC 5B 03    <[.
-                lda $0359,x                  ; CF8D= BD 59 03    =Y.
+                ldy vduForegroundGCOLMode,x                  ; CF8A= BC 5B 03    <[.
+                lda vduForegroundGraphicsColour,x                  ; CF8D= BD 59 03    =Y.
                 tax                          ; CF90= AA          *
 LCF91:
                 jsr LCFC4                    ; CF91= 20 C4 CF     DO
@@ -7087,7 +7119,7 @@ LD3C1:
                 jsr LD773                    ; D3C1= 20 73 D7     sW
                 bne LD3CE                    ; D3C4= D0 08       P.
                 lda ($D4),y                  ; D3C6= B1 D4       1T
-                eor $035A                    ; D3C8= 4D 5A 03    MZ.
+                eor vduBackgroundGraphicsColour                    ; D3C8= 4D 5A 03    MZ.
                 sta $D8                      ; D3CB= 85 D8       .X
                 rts                          ; D3CD= 60          `
 
@@ -7113,7 +7145,7 @@ LD3D6:
 LD3F0:
                 jsr LD314                    ; D3F0= 20 14 D3     .S
                 lda ($D4),y                  ; D3F3= B1 D4       1T
-                eor $035A                    ; D3F5= 4D 5A 03    MZ.
+                eor vduBackgroundGraphicsColour                    ; D3F5= 4D 5A 03    MZ.
                 sta $D8                      ; D3F8= 85 D8       .X
                 bne LD40E                    ; D3FA= D0 12       P.
                 sec                          ; D3FC= 38          8
@@ -7150,7 +7182,7 @@ LD42B:
 LD430:
                 jsr LD304                    ; D430= 20 04 D3     .S
                 lda ($D4),y                  ; D433= B1 D4       1T
-                eor $035A                    ; D435= 4D 5A 03    MZ.
+                eor vduBackgroundGraphicsColour                    ; D435= 4D 5A 03    MZ.
                 sta $D8                      ; D438= 85 D8       .X
                 lda $DA                      ; D43A= A5 DA       %Z
                 bne LD42B                    ; D43C= D0 ED       Pm
