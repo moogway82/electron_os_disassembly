@@ -4419,7 +4419,7 @@ vdu8EntryPoint:
                 bne LC59D                    ; C541= D0 5A       PZ
                 dec vduTextCursorXPosition                    ; C543= CE 18 03    N..
                 ldx vduTextCursorXPosition                    ; C546= AE 18 03    ...
-                cpx $0308                    ; C549= EC 08 03    l..
+                cpx vduTextWindowLeft                    ; C549= EC 08 03    l..
                 bmi LC56C                    ; C54C= 30 1E       0.
                 lda $D6                      ; C54E= A5 D6       %V
                 sec                          ; C550= 38          8
@@ -4440,7 +4440,7 @@ LC569:
                 rts                          ; C56B= 60          `
 
 LC56C:
-                lda $030A                    ; C56C= AD 0A 03    -..
+                lda vduTextWindowRight                    ; C56C= AD 0A 03    -..
                 sta vduTextCursorXPosition                    ; C56F= 8D 18 03    ...
 LC572:
                 dec pagedModeCounter                    ; C572= CE 69 02    Ni.
@@ -4520,7 +4520,7 @@ vdu9EntryPoint:
                 and #$20                     ; C5E4= 29 20       )
                 bne LC62E                    ; C5E6= D0 46       PF
                 ldx vduTextCursorXPosition                    ; C5E8= AE 18 03    ...
-                cpx $030A                    ; C5EB= EC 0A 03    l..
+                cpx vduTextWindowRight                    ; C5EB= EC 0A 03    l..
                 bcs LC600                    ; C5EE= B0 10       0.
                 inc vduTextCursorXPosition                    ; C5F0= EE 18 03    n..
                 lda $D6                      ; C5F3= A5 D6       %V
@@ -4531,13 +4531,13 @@ vdu9EntryPoint:
                 jmp LC561                    ; C5FD= 4C 61 C5    LaE
 
 LC600:
-                lda $0308                    ; C600= AD 08 03    -..
+                lda vduTextWindowLeft                    ; C600= AD 08 03    -..
                 sta vduTextCursorXPosition                    ; C603= 8D 18 03    ...
 LC606:
                 clc                          ; C606= 18          .
                 jsr LCAD8                    ; C607= 20 D8 CA     XJ
                 ldx vduTextCursorYPosition                    ; C60A= AE 19 03    ...
-                cpx $0309                    ; C60D= EC 09 03    l..
+                cpx vduTextWindowBottom                    ; C60D= EC 09 03    l..
                 bcs LC617                    ; C610= B0 05       0.
                 inc vduTextCursorYPosition                    ; C612= EE 19 03    n..
                 bcc LC62B                    ; C615= 90 14       ..
@@ -4551,7 +4551,7 @@ LC617:
 LC625:
                 jsr scrollTextWindowUpwards                    ; C625= 20 3B CD     ;M
 LC628:
-                jsr LCDE8                    ; C628= 20 E8 CD     hM
+                jsr clearOneLine                    ; C628= 20 E8 CD     hM
 LC62B:
                 jmp setTextCursorScreenAddresses                    ; C62B= 4C 42 CE    LBN
 
@@ -4637,7 +4637,7 @@ LC691:
                 ldx #$20                     ; C6A0= A2 20       "
                 ldy #$08                     ; C6A2= A0 08        .
                 jsr LD3A1                    ; C6A4= 20 A1 D3     !S
-                jsr LCE24                    ; C6A7= 20 24 CE     $N
+                jsr validatePositionAndSetupScreenAddress                    ; C6A7= 20 24 CE     $N
 LC6AA:
                 bcs LC71B                    ; C6AA= B0 6F       0o
                 rts                          ; C6AC= 60          `
@@ -4714,9 +4714,9 @@ LC704:
                 ldx vduTextWindowTop                    ; C704= AE 0B 03    ...
 LC707:
                 stx vduTextCursorYPosition                    ; C707= 8E 19 03    ...
-                jsr LCDE8                    ; C70A= 20 E8 CD     hM
+                jsr clearOneLine                    ; C70A= 20 E8 CD     hM
                 ldx vduTextCursorYPosition                    ; C70D= AE 19 03    ...
-                cpx $0309                    ; C710= EC 09 03    l..
+                cpx vduTextWindowBottom                    ; C710= EC 09 03    l..
                 inx                          ; C713= E8          h
                 bcc LC707                    ; C714= 90 F1       .q
 
@@ -4752,13 +4752,13 @@ LC72A:
                 jsr LC746                    ; C72A= 20 46 C7     FG
                 clc                          ; C72D= 18          .
                 lda vdu31ParamXCoordinate                    ; C72E= AD 22 03    -".
-                adc $0308                    ; C731= 6D 08 03    m..
+                adc vduTextWindowLeft                    ; C731= 6D 08 03    m..
                 sta vduTextCursorXPosition                    ; C734= 8D 18 03    ...
                 lda vdu31ParamYCoordinate                    ; C737= AD 23 03    -#.
                 clc                          ; C73A= 18          .
                 adc vduTextWindowTop                    ; C73B= 6D 0B 03    m..
                 sta vduTextCursorYPosition                    ; C73E= 8D 19 03    ...
-                jsr LCE24                    ; C741= 20 24 CE     $N
+                jsr validatePositionAndSetupScreenAddress                    ; C741= 20 24 CE     $N
                 bcc LC6F5                    ; C744= 90 AF       ./
 LC746:
                 ldx #$18                     ; C746= A2 18       ".
@@ -4900,7 +4900,7 @@ LC7CA:
                 lda $0357                    ; C7E2= AD 57 03    -W.
                 eor #$FF                     ; C7E5= 49 FF       I.
                 sta $D3                      ; C7E7= 85 D3       .S
-                eor $0358                    ; C7E9= 4D 58 03    MX.
+                eor vduBackgroundTextColour                    ; C7E9= 4D 58 03    MX.
                 sta $D2                      ; C7EC= 85 D2       .R
                 rts                          ; C7EE= 60          `
 
@@ -5343,10 +5343,10 @@ LCA06:
                 bpl LCA06                    ; CA0A= 10 FA       .z
                 ldx vduCurrentScreenMODE                    ; CA0C= AE 55 03    .U.
                 ldy textWindowRightColumnTable,x                  ; CA0F= BC B4 C3    <4C
-                sty $030A                    ; CA12= 8C 0A 03    ...
+                sty vduTextWindowRight                    ; CA12= 8C 0A 03    ...
                 jsr LCA87                    ; CA15= 20 87 CA     .J
                 ldy textWindowBottomRowTable,x                  ; CA18= BC AD C3    <-C
-                sty $0309                    ; CA1B= 8C 09 03    ...
+                sty vduTextWindowBottom                    ; CA1B= 8C 09 03    ...
                 ldy #$03                     ; CA1E= A0 03        .
                 sty $0323                    ; CA20= 8C 23 03    .#.
                 iny                          ; CA23= C8          H
@@ -5485,14 +5485,14 @@ LCADF:
                 lda pagedModeCounter                    ; CAE7= AD 69 02    -i.
                 bmi LCB0E                    ; CAEA= 30 22       0"
                 lda vduTextCursorYPosition                    ; CAEC= AD 19 03    -..
-                cmp $0309                    ; CAEF= CD 09 03    M..
+                cmp vduTextWindowBottom                    ; CAEF= CD 09 03    M..
                 bcc LCB0E                    ; CAF2= 90 1A       ..
                 lsr a                        ; CAF4= 4A          J
                 lsr a                        ; CAF5= 4A          J
                 sec                          ; CAF6= 38          8
                 adc pagedModeCounter                    ; CAF7= 6D 69 02    mi.
                 adc vduTextWindowTop                    ; CAFA= 6D 0B 03    m..
-                cmp $0309                    ; CAFD= CD 09 03    M..
+                cmp vduTextWindowBottom                    ; CAFD= CD 09 03    M..
                 bcc LCB0E                    ; CB00= 90 0C       ..
                 clc                          ; CB02= 18          .
 LCB03:
@@ -5691,7 +5691,7 @@ LCBBB:
                 bpl LCBBB                    ; CBC2= 10 F7       .w
                 tay                          ; CBC4= A8          (
 LCBC5:
-                lda $0358                    ; CBC5= AD 58 03    -X.
+                lda vduBackgroundTextColour                    ; CBC5= AD 58 03    -X.
 LCBC8:
                 sta ($D8),y                  ; CBC8= 91 D8       .X
                 sta ($DA),y                  ; CBCA= 91 DA       .Z
@@ -5845,7 +5845,7 @@ LCC96:
                 bne LCC9E                    ; CC9A= D0 02       P.
                 bvc LCCDC                    ; CC9C= 50 3E       P>
 LCC9E:
-                lda $0309                    ; CC9E= AD 09 03    -..
+                lda vduTextWindowBottom                    ; CC9E= AD 09 03    -..
                 bcc LCCA6                    ; CCA1= 90 03       ..
                 lda vduTextWindowTop                    ; CCA3= AD 0B 03    -..
 LCCA6:
@@ -5944,7 +5944,7 @@ LCCDC:
 ; ***************************************************************************************
 scrollTextWindowDownwards:
                 jsr LCD97                    ; CCDD= 20 97 CD     .M
-                lda $0309                    ; CCE0= AD 09 03    -..
+                lda vduTextWindowBottom                    ; CCE0= AD 09 03    -..
                 sta vduTextCursorYPosition                    ; CCE3= 8D 19 03    ...
                 jsr setTextCursorScreenAddresses                    ; CCE6= 20 42 CE     BN
 LCCE9:
@@ -5957,7 +5957,7 @@ LCCF1:
                 sta $DA                      ; CCF5= 85 DA       .Z
                 bcs LCCFF                    ; CCF7= B0 06       0.
 LCCF9:
-                jsr LCDAF                    ; CCF9= 20 AF CD     /M
+                jsr copyCharacterLineOfTextWindow                    ; CCF9= 20 AF CD     /M
                 jmp LCD0A                    ; CCFC= 4C 0A CD    L.M
 
 LCCFF:
@@ -6019,7 +6019,7 @@ LCD50:
                 sta $DA                      ; CD54= 85 DA       .Z
                 bcc LCD5E                    ; CD56= 90 06       ..
 LCD58:
-                jsr LCDAF                    ; CD58= 20 AF CD     /M
+                jsr copyCharacterLineOfTextWindow                    ; CD58= 20 AF CD     /M
                 jmp LCD66                    ; CD5B= 4C 66 CD    LfM
 
 LCD5E:
@@ -6072,7 +6072,7 @@ LCD96:
 LCD97:
                 jsr LCD16                    ; CD97= 20 16 CD     .M
                 sec                          ; CD9A= 38          8
-                lda $0309                    ; CD9B= AD 09 03    -..
+                lda vduTextWindowBottom                    ; CD9B= AD 09 03    -..
                 sbc vduTextWindowTop                    ; CD9E= ED 0B 03    m..
                 sta $DC                      ; CDA1= 85 DC       .\
                 bne LCDAA                    ; CDA3= D0 05       P.
@@ -6081,14 +6081,16 @@ LCD97:
                 jmp LCD16                    ; CDA7= 4C 16 CD    L.M
 
 LCDAA:
-                lda $0308                    ; CDAA= AD 08 03    -..
-                bpl LCE1F                    ; CDAD= 10 70       .p
-LCDAF:
+                lda vduTextWindowLeft                    ; CDAA= AD 08 03    -..
+                bpl storeTextCursorXSetCarryAndReturn                    ; CDAD= 10 70       .p
+
+; ***************************************************************************************
+copyCharacterLineOfTextWindow:
                 lda $D8                      ; CDAF= A5 D8       %X
                 pha                          ; CDB1= 48          H
                 sec                          ; CDB2= 38          8
-                lda $030A                    ; CDB3= AD 0A 03    -..
-                sbc $0308                    ; CDB6= ED 08 03    m..
+                lda vduTextWindowRight                    ; CDB3= AD 0A 03    -..
+                sbc vduTextWindowLeft                    ; CDB6= ED 08 03    m..
                 sta $DD                      ; CDB9= 85 DD       .]
 LCDBB:
                 ldy vduBytesPerCharacter                    ; CDBB= AC 4F 03    ,O.
@@ -6120,17 +6122,18 @@ LCDDA:
                 sta $D8                      ; CDE5= 85 D8       .X
                 rts                          ; CDE7= 60          `
 
-LCDE8:
+; ***************************************************************************************
+clearOneLine:
                 lda vduTextCursorXPosition                    ; CDE8= AD 18 03    -..
                 pha                          ; CDEB= 48          H
                 jsr LCDAA                    ; CDEC= 20 AA CD     *M
                 jsr setTextCursorScreenAddresses                    ; CDEF= 20 42 CE     BN
                 sec                          ; CDF2= 38          8
-                lda $030A                    ; CDF3= AD 0A 03    -..
-                sbc $0308                    ; CDF6= ED 08 03    m..
+                lda vduTextWindowRight                    ; CDF3= AD 0A 03    -..
+                sbc vduTextWindowLeft                    ; CDF6= ED 08 03    m..
                 sta $DA                      ; CDF9= 85 DA       .Z
 LCDFB:
-                lda $0358                    ; CDFB= AD 58 03    -X.
+                lda vduBackgroundTextColour                    ; CDFB= AD 58 03    -X.
                 ldy vduBytesPerCharacter                    ; CDFE= AC 4F 03    ,O.
 LCE01:
                 dey                          ; CE01= 88          .
@@ -6152,26 +6155,27 @@ LCE1A:
                 dec $DA                      ; CE1A= C6 DA       FZ
                 bpl LCDFB                    ; CE1C= 10 DD       .]
                 pla                          ; CE1E= 68          h
-LCE1F:
+storeTextCursorXSetCarryAndReturn:
                 sta vduTextCursorXPosition                    ; CE1F= 8D 18 03    ...
-LCE22:
+setCarryAndReturn:
                 sec                          ; CE22= 38          8
                 rts                          ; CE23= 60          `
 
-LCE24:
+; ***************************************************************************************
+validatePositionAndSetupScreenAddress:
                 ldx vduTextCursorXPosition                    ; CE24= AE 18 03    ...
-                cpx $0308                    ; CE27= EC 08 03    l..
-                bmi LCE22                    ; CE2A= 30 F6       0v
-                cpx $030A                    ; CE2C= EC 0A 03    l..
+                cpx vduTextWindowLeft                    ; CE27= EC 08 03    l..
+                bmi setCarryAndReturn                    ; CE2A= 30 F6       0v
+                cpx vduTextWindowRight                    ; CE2C= EC 0A 03    l..
                 beq LCE33                    ; CE2F= F0 02       p.
-                bpl LCE22                    ; CE31= 10 EF       .o
+                bpl setCarryAndReturn                    ; CE31= 10 EF       .o
 LCE33:
                 ldx vduTextCursorYPosition                    ; CE33= AE 19 03    ...
                 cpx vduTextWindowTop                    ; CE36= EC 0B 03    l..
-                bmi LCE22                    ; CE39= 30 E7       0g
-                cpx $0309                    ; CE3B= EC 09 03    l..
+                bmi setCarryAndReturn                    ; CE39= 30 E7       0g
+                cpx vduTextWindowBottom                    ; CE3B= EC 09 03    l..
                 beq setTextCursorScreenAddresses                    ; CE3E= F0 02       p.
-                bpl LCE22                    ; CE40= 10 E0       .`
+                bpl setCarryAndReturn                    ; CE40= 10 E0       .`
                 ; fall through...
 
 ; ***************************************************************************************
@@ -7370,7 +7374,7 @@ LD54C:
 osbyte86:
                 lda vduTextCursorXPosition                    ; D55D= AD 18 03    -..
                 sec                          ; D560= 38          8
-                sbc $0308                    ; D561= ED 08 03    m..
+                sbc vduTextWindowLeft                    ; D561= ED 08 03    m..
                 tax                          ; D564= AA          *
                 lda vduTextCursorYPosition                    ; D565= AD 19 03    -..
                 sec                          ; D568= 38          8
@@ -7538,9 +7542,9 @@ LD684:
                 jmp LD624                    ; D687= 4C 24 D6    L$V
 
 LD68A:
-                inc $0308,x                  ; D68A= FE 08 03    ~..
+                inc vduTextWindowLeft,x                  ; D68A= FE 08 03    ~..
                 bne LD692                    ; D68D= D0 03       P.
-                inc $0309,x                  ; D68F= FE 09 03    ~..
+                inc vduTextWindowBottom,x                  ; D68F= FE 09 03    ~..
 LD692:
                 sec                          ; D692= 38          8
                 lda $0300,x                  ; D693= BD 00 03    =..
@@ -7551,7 +7555,7 @@ LD692:
                 sta $0301,x                  ; D6A2= 9D 01 03    ...
                 bpl LD6D7                    ; D6A5= 10 30       .0
 LD6A7:
-                lda $030A,x                  ; D6A7= BD 0A 03    =..
+                lda vduTextWindowRight,x                  ; D6A7= BD 0A 03    =..
                 bmi LD6B7                    ; D6AA= 30 0B       0.
                 inc $0306,x                  ; D6AC= FE 06 03    ~..
                 bne LD6C2                    ; D6AF= D0 11       P.
@@ -7626,7 +7630,7 @@ LD71C:
                 lda vduColourMaskLeft                    ; D71C= AD 62 03    -b.
                 sta $DA                      ; D71F= 85 DA       .Z
                 lda ($D6),y                  ; D721= B1 D6       1V
-                eor $0358                    ; D723= 4D 58 03    MX.
+                eor vduBackgroundTextColour                    ; D723= 4D 58 03    MX.
                 clc                          ; D726= 18          .
 LD727:
                 bit $DA                      ; D727= 24 DA       $Z
