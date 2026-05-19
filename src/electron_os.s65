@@ -6209,8 +6209,7 @@ setTextCursorScreenAddresses:
 
 .if version==100 && subVersion==7
                 lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
-.else
-                lda multiplyBy640Table,y
+
                 sta $D7                             ; .vduWriteCursorScreenAddressHigh=A
                 iny                                 ; Y=Y+1
                 lda #2                              ; A=2
@@ -6224,12 +6223,14 @@ setTextCursorScreenAddresses:
                 lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
                 plp                                 ; pull flags
                 beq LCE58
-.endif
+.else
+                lda multiplyBy640Table,y
                 sta $D7                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
                 lda multiplyBy640Table+1,y                                                      ; CE4C= B9 6E C3    9nC
                 ldy vduBytesPerCharacterRowHigh                                                 ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
+.endif
                 lsr $D7                      ; CE55= 46 D7       FW
                 ror a                        ; CE57= 6A          j
 LCE58:
@@ -6243,8 +6244,10 @@ LCE58:
 .if version==100 && subVersion==7
                 dex                                 ; X=X-1
                 beq mode7Cursor                     ; if (in MODE 7) then branch
+                cpx #15                             ; is it mode 1 or mode 5? (four colour modes = 16 bytes per character)
+.else
+                cpx #$10                     ; CE69= E0 10       `.
 .endif
-                cpx #15                     ; CE69= E0 10       `.
                 beq mode1or5Cursor                    ; CE6B= F0 03       p.
                 bcc mode0346Cursor                    ; CE6D= 90 02       ..
                 asl a                        ; CE6F= 0A          .
