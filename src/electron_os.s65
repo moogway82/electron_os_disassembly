@@ -4706,9 +4706,9 @@ vdu12EntryPoint:
                 jsr testVD5State                    ; C6F6= 20 05 C5     .E
                 bne LC769                    ; C6F9= D0 6E       Pn
                 lda vduStatusByte                      ; C6FB= A5 D0       %P
-                and #$08                     ; C6FD= 29 08       ).
+                and #%00001000                     ; C6FD= 29 08       ).
                 bne LC704                    ; C6FF= D0 03       P.
-                jmp LCB9D                    ; C701= 4C 9D CB    L.K
+                jmp initializeDisplayAndHomeCursor                    ; C701= 4C 9D CB    L.K
 
 LC704:
                 ldx vduTextWindowTop                    ; C704= AE 0B 03    ...
@@ -5634,7 +5634,8 @@ LCB68:
                 jsr vdu20EntryPoint                    		 ; Set Default screen colours					; CB94= 20 F6 C7     vG
                 jsr vdu26EntryPoint                    														; CB97= 20 02 CA     .J
                 jsr LC976                    																; CB9A= 20 76 C9     vI
-LCB9D:
+
+initializeDisplayAndHomeCursor:
                 ldx #$00                     																; CB9D= A2 00       ".
                 lda vduStartScreenAddressHighByte                    										; CB9F= AD 4E 03    -N.
                 jsr LC9F0                    																; CBA2= 20 F0 C9     pI
@@ -5679,7 +5680,7 @@ LCBD4_300_213:
                 rts
 
 .else
-                
+; Clear screen routine                
                 ldx #$06                     ; CBB6= A2 06       ".
                 ldy vduStartScreenAddressHighByte                    ; CBB8= AC 4E 03    ,N.
 LCBBB:
@@ -5691,7 +5692,10 @@ LCBBB:
                 bpl LCBBB                    ; CBC2= 10 F7       .w
                 tay                          ; CBC4= A8          (
 LCBC5:
-                lda vduBackgroundTextColour                    ; CBC5= AD 58 03    -X.
+                lda vduBackgroundTextColour                    ; This seems to be the character to clear the screen...      ; CBC5= AD 58 03    -X.
+; This is the screen clearing routine I think.
+; wp 7C02,1,w: D8-DF contains 7F00, 7E00, 7D00, 7C00 and the STA's store 0x00 into each bank
+; wp 6902,1,w: D8-Df contains: 6B00, 6A00, 6900, 6800...
 LCBC8:
                 sta ($D8),y                  ; CBC8= 91 D8       .X
                 sta ($DA),y                  ; CBCA= 91 DA       .Z
@@ -5781,7 +5785,7 @@ LCC38:
 LCC3F:
                 rts                          ; CC3F= 60          `
 
-osword0A:
+osword10EntryPoint:
                 jsr getCharacterDefinitionAddress                    ; CC40= 20 4F CF     OO
                 ldy #$00                     ; CC43= A0 00        .
 LCC45:
@@ -9736,7 +9740,7 @@ LE3B1:
                 .word osword07               ; &07 - Generate a sound
                 .word osword08               ; &08 - Define a sound envelope
                 .word osword09               ; &09 - Read pixel logical colour
-                .word osword0A               ; &0A - Read a character definition
+                .word osword10EntryPoint     ; &0A - Read a character definition
                 .word osword0B               ; &0B - Read the palette
                 .word osword0C               ; &0C - Write the palette
                 .word osword0D               ; &0D - Read current and previous graphics cursor positions
