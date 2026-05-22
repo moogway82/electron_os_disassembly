@@ -4019,7 +4019,11 @@ screenDisplayMemoryIndexTable:
                 .byte $02
                 .byte $02
                 .byte $03
+.if version==100 && subVersion==7
+                .byte $04
+.else
                 .byte $03
+.endif
 
 ; Table of offsets into the VDU variables, used when line plotting
 vduGraphicsWindowBoundariesTable:
@@ -4784,7 +4788,7 @@ LC75B:
 vdu13EntryPoint:
                 jsr testVD5State                    ; C75E= 20 05 C5     .E
                 bne LC754                    ; C761= D0 F1       Pq
-                jsr LCDAA                    ; C763= 20 AA CD     *M
+                jsr setTextCursorToLeftHandColumn                    ; C763= 20 AA CD     *M
                 jmp setTextCursorScreenAddresses                    ; C766= 4C 42 CE    LBN
 
 LC769:
@@ -5947,7 +5951,7 @@ LCCDC:
 ;
 ; ***************************************************************************************
 scrollTextWindowDownwards:
-                jsr LCD97                    ; CCDD= 20 97 CD     .M
+                jsr checkVerticalTextWindowBoundsAndMoveToLeftColumn                    ; CCDD= 20 97 CD     .M
                 lda vduTextWindowBottom                    ; CCE0= AD 09 03    -..
                 sta vduTextCursorYPosition                    ; CCE3= 8D 19 03    ...
                 jsr setTextCursorScreenAddresses                    ; CCE6= 20 42 CE     BN
@@ -6008,7 +6012,7 @@ LCD26:
 ;
 ; ***************************************************************************************
 scrollTextWindowUpwards:
-                jsr LCD97                    ; CD3B= 20 97 CD     .M
+                jsr checkVerticalTextWindowBoundsAndMoveToLeftColumn                    ; CD3B= 20 97 CD     .M
                 ldy vduTextWindowTop                    ; CD3E= AC 0B 03    ,..
                 sty vduTextCursorYPosition                    ; CD41= 8C 19 03    ...
                 jsr setTextCursorScreenAddresses                    ; CD44= 20 42 CE     BN
@@ -6073,18 +6077,20 @@ LCD8E:
 LCD96:
                 rts                          ; CD96= 60          `
 
-LCD97:
+; ***************************************************************************************
+checkVerticalTextWindowBoundsAndMoveToLeftColumn:
                 jsr LCD16                    ; CD97= 20 16 CD     .M
                 sec                          ; CD9A= 38          8
                 lda vduTextWindowBottom                    ; CD9B= AD 09 03    -..
                 sbc vduTextWindowTop                    ; CD9E= ED 0B 03    m..
                 sta $DC                      ; CDA1= 85 DC       .\
-                bne LCDAA                    ; CDA3= D0 05       P.
+                bne setTextCursorToLeftHandColumn                    ; CDA3= D0 05       P.
                 pla                          ; CDA5= 68          h
                 pla                          ; CDA6= 68          h
                 jmp LCD16                    ; CDA7= 4C 16 CD    L.M
 
-LCDAA:
+; ***************************************************************************************
+setTextCursorToLeftHandColumn:
                 lda vduTextWindowLeft                    ; CDAA= AD 08 03    -..
                 bpl storeTextCursorXSetCarryAndReturn                    ; CDAD= 10 70       .p
 
@@ -6130,7 +6136,7 @@ LCDDA:
 clearOneLine:
                 lda vduTextCursorXPosition                    ; CDE8= AD 18 03    -..
                 pha                          ; CDEB= 48          H
-                jsr LCDAA                    ; CDEC= 20 AA CD     *M
+                jsr setTextCursorToLeftHandColumn                    ; CDEC= 20 AA CD     *M
                 jsr setTextCursorScreenAddresses                    ; CDEF= 20 42 CE     BN
                 sec                          ; CDF2= 38          8
                 lda vduTextWindowRight                    ; CDF3= AD 0A 03    -..
