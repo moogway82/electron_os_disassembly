@@ -4320,7 +4320,7 @@ LC4FF:
 LC504:
                 rts                          ; C504= 60          `
 
-testVD5State:
+isTextCursorActive:
                 lda vduStatusByte
                 and #$20
                 rts
@@ -4419,7 +4419,7 @@ vdu5EntryPoint:
 ;
 ; ***************************************************************************************
 vdu8EntryPoint:
-                jsr testVD5State                    ; C53E= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C53E= 20 05 C5     .E
                 bne LC59D                    ; C541= D0 5A       PZ
                 dec vduTextCursorXPosition                    ; C543= CE 18 03    N..
                 ldx vduTextCursorXPosition                    ; C546= AE 18 03    ...
@@ -4508,7 +4508,7 @@ LC5D6:
 ;
 ; ***************************************************************************************
 vdu11EntryPoint:
-                jsr testVD5State                    ; C5D9= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C5D9= 20 05 C5     .E
                 beq LC572                    ; C5DC= F0 94       p.
 LC5DE:
                 ldx #$02                     ; C5DE= A2 02       ".
@@ -4597,7 +4597,7 @@ LC667:
 ;
 ; ***************************************************************************************
 vdu10EntryPoint:
-                jsr testVD5State                    ; C66A= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C66A= 20 05 C5     .E
                 beq LC606                    ; C66D= F0 97       p.
 LC66F:
                 ldx #$02                     ; C66F= A2 02       ".
@@ -4707,7 +4707,7 @@ LC6F5:
 ;
 ; ***************************************************************************************
 vdu12EntryPoint:
-                jsr testVD5State                    ; C6F6= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C6F6= 20 05 C5     .E
                 bne LC769                    ; C6F9= D0 6E       Pn
                 lda vduStatusByte                      ; C6FB= A5 D0       %P
                 and #%00001000                     ; C6FD= 29 08       ).
@@ -4733,7 +4733,7 @@ LC707:
 ;
 ; ***************************************************************************************
 vdu30EntryPoint:
-                jsr testVD5State                    ; C716= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C716= 20 05 C5     .E
                 bne LC74D                    ; C719= D0 32       P2
 LC71B:
                 lda #$00                     ; C71B= A9 00       ).
@@ -4750,7 +4750,7 @@ vdu31ParamXCoordinate = vduQueueEndByte - 1
 vdu31ParamYCoordinate = vduQueueEndByte
 
 vdu31EntryPoint:
-                jsr testVD5State                    ; C725= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C725= 20 05 C5     .E
                 bne LC6F5                    ; C728= D0 CB       PK
 LC72A:
                 jsr LC746                    ; C72A= 20 46 C7     FG
@@ -4786,7 +4786,7 @@ LC75B:
 ;
 ; ***************************************************************************************
 vdu13EntryPoint:
-                jsr testVD5State                    ; C75E= 20 05 C5     .E
+                jsr isTextCursorActive                    ; C75E= 20 05 C5     .E
                 bne LC754                    ; C761= D0 F1       Pq
                 jsr setTextCursorToLeftHandColumn                    ; C763= 20 AA CD     *M
                 jmp setTextCursorScreenAddresses                    ; C766= 4C 42 CE    LBN
@@ -5451,7 +5451,7 @@ vdu29EntryPoint:
 ; ***************************************************************************************
 vdu127EntryPoint:
                 jsr vdu8EntryPoint                    ; CAAB= 20 3E C5     >E
-                jsr testVD5State                    ; CAAE= 20 05 C5     .E
+                jsr isTextCursorActive                    ; CAAE= 20 05 C5     .E
                 bne LCABC                    ; CAB1= D0 09       P.
                 sta $DC                      ; CAB3= 85 DC       .\
                 lda #$C0                     ; CAB5= A9 C0       )@
