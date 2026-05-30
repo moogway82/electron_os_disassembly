@@ -4500,7 +4500,7 @@ LC5C8:
                 txa                          ; C5D3= 8A          .
                 beq LC5DE                    ; C5D4= F0 08       p.
 LC5D6:
-                jmp LD0C9                    ; C5D6= 4C C9 D0    LIP
+                jmp convertPixelGraphicsCoordinatesToExternal                    ; C5D6= 4C C9 D0    LIP
 
 ; ***************************************************************************************
 ;
@@ -4589,7 +4589,7 @@ LC659:
                 txa                          ; C664= 8A          .
                 beq LC66F                    ; C665= F0 08       p.
 LC667:
-                jmp LD0C9                    ; C667= 4C C9 D0    LIP
+                jmp convertPixelGraphicsCoordinatesToExternal                    ; C667= 4C C9 D0    LIP
 
 ; ***************************************************************************************
 ;
@@ -4640,7 +4640,7 @@ LC691:
                 jsr LC523                    ; C69D= 20 23 C5     #E
                 ldx #$20                     ; C6A0= A2 20       "
                 ldy #$08                     ; C6A2= A0 08        .
-                jsr LD3A1                    ; C6A4= 20 A1 D3     !S
+                jsr copyFourBytesWithinVDUVariables                    ; C6A4= 20 A1 D3     !S
                 jsr validatePositionAndSetupScreenAddress                    ; C6A7= 20 24 CE     $N
 LC6AA:
                 bcs LC71B                    ; C6AA= B0 6F       0o
@@ -4734,7 +4734,7 @@ LC707:
 ; ***************************************************************************************
 vdu30EntryPoint:
                 jsr isTextCursorActive                    ; C716= 20 05 C5     .E
-                bne LC74D                    ; C719= D0 32       P2
+                bne graphicsCursorHome                    ; C719= D0 32       P2
 LC71B:
                 lda #$00                     ; C71B= A9 00       ).
                 sta $0323                    ; C71D= 8D 23 03    .#.
@@ -4769,16 +4769,19 @@ LC746:
                 ldy #$28                     ; C748= A0 28        (
                 jmp LCD1A                    ; C74A= 4C 1A CD    L.M
 
-LC74D:
+; ***************************************************************************************
+graphicsCursorHome:
                 ldx #$06                     ; C74D= A2 06       ".
                 ldy #$26                     ; C74F= A0 26        &
-                jsr LD399                    ; C751= 20 99 D3     .S
-LC754:
-                ldx #$00                     ; C754= A2 00       ".
-                ldy #$24                     ; C756= A0 24        $
-                jsr LD399                    ; C758= 20 99 D3     .S
+                jsr copyTwoBytesWithinVDUVariables                    ; C751= 20 99 D3     .S
+
+; ***************************************************************************************
+setGraphicsCursorToLeftHandColumn:
+                ldx #$00                            ; source: left edge of graphics window      ; C754= A2 00       ".
+                ldy #$24                            ; destination: graphics cursor X coordinate ; C756= A0 24        $
+                jsr copyTwoBytesWithinVDUVariables  ; copy two bytes                            ; C758= 20 99 D3     .S
 LC75B:
-                jmp LD0C9                    ; C75B= 4C C9 D0    LIP
+                jmp convertPixelGraphicsCoordinatesToExternal                    ; C75B= 4C C9 D0    LIP
 
 ; ***************************************************************************************
 ;
@@ -4786,13 +4789,14 @@ LC75B:
 ;
 ; ***************************************************************************************
 vdu13EntryPoint:
-                jsr isTextCursorActive                    ; C75E= 20 05 C5     .E
-                bne LC754                    ; C761= D0 F1       Pq
-                jsr setTextCursorToLeftHandColumn                    ; C763= 20 AA CD     *M
-                jmp setTextCursorScreenAddresses                    ; C766= 4C 42 CE    LBN
+                jsr isTextCursorActive              ; set A=0 if text cursor is active; A=$20 if graphics cursor   ; C75E= 20 05 C5     .E
+                bne setGraphicsCursorToLeftHandColumn   ; if (Graphics cursor active) then branch           ; C761= D0 F1       Pq
+                                                        ; set graphics cursor to left hand columm
+                jsr setTextCursorToLeftHandColumn   ; set text column to left hand column               ; C763= 20 AA CD     *M
+                jmp setTextCursorScreenAddresses    ; set cursor position                               ; C766= 4C 42 CE    LBN
 
 LC769:
-                jsr LC74D                    ; C769= 20 4D C7     MG
+                jsr graphicsCursorHome                    ; C769= 20 4D C7     MG
 
 ; ***************************************************************************************
 ;
@@ -4807,7 +4811,7 @@ vdu16EntryPoint:
                 jsr LCFC4                    ; C777= 20 C4 CF     DO
                 ldx #$00                     ; C77A= A2 00       ".
                 ldy #$28                     ; C77C= A0 28        (
-                jsr LD393                    ; C77E= 20 93 D3     .S
+                jsr copyEightBytesWithinVDUVariables                    ; C77E= 20 93 D3     .S
                 sec                          ; C781= 38          8
                 lda vduGraphicsWindowPixelsTopLow                    ; C782= AD 06 03    -..
                 sbc vduGraphicsWindowPixelsBottomLow                    ; C785= ED 02 03    m..
@@ -5408,7 +5412,7 @@ vdu24EntryPoint:
 LCA79:
                 ldy #$00                     ; CA79= A0 00        .
                 ldx #$1C                     ; CA7B= A2 1C       ".
-                jsr LD393                    ; CA7D= 20 93 D3     .S
+                jsr copyEightBytesWithinVDUVariables                    ; CA7D= 20 93 D3     .S
 LCA80:
                 ldx #$10                     ; CA80= A2 10       ".
                 ldy #$28                     ; CA82= A0 28        (
@@ -5441,8 +5445,8 @@ vdu29ParameterStart = $320
 vdu29EntryPoint:
                 ldx #$20                     ; CAA1= A2 20       "
                 ldy #$0C                     ; CAA3= A0 0C        .
-                jsr LD3A1                    ; CAA5= 20 A1 D3     !S
-                jmp LD0C9                    ; CAA8= 4C C9 D0    LIP
+                jsr copyFourBytesWithinVDUVariables                    ; CAA5= 20 A1 D3     !S
+                jmp convertPixelGraphicsCoordinatesToExternal                    ; CAA8= 4C C9 D0    LIP
 
 ; ***************************************************************************************
 ;
@@ -6306,7 +6310,7 @@ plotACharacterAtGraphicsCursor:
                 ldy vduForegroundGCOLMode                    ; CE91= AC 5B 03    ,[.
 plotACharacterWithXYAsGraphicsColourAndGCOLMode:
                 jsr LCFC4                    ; CE94= 20 C4 CF     DO
-                jsr LD39D                    ; CE97= 20 9D D3     .S
+                jsr copyGraphicsCursorPixelPositionToWorkspaceABCD                    ; CE97= 20 9D D3     .S
                 ldy #$00                     ; CE9A= A0 00        .
 displayNextRowOfCharacter:
                 sty $DA                      ; CE9C= 84 DA       .Z
@@ -6326,7 +6330,7 @@ LCEB1:
 characterPatternZero:
                 ldx #$28                     ; CEB5= A2 28       "(
                 ldy #$24                     ; CEB7= A0 24        $
-                jsr LD399                    ; CEB9= 20 99 D3     .S
+                jsr copyTwoBytesWithinVDUVariables                    ; CEB9= 20 99 D3     .S
                 ldy $0326                    ; CEBC= AC 26 03    ,&.
                 bne LCEC4                    ; CEBF= D0 03       P.
                 dec $0327                    ; CEC1= CE 27 03    N'.
@@ -6338,7 +6342,7 @@ LCEC4:
                 bne displayNextRowOfCharacter                    ; CECC= D0 CE       PN
                 ldx #$28                     ; CECE= A2 28       "(
                 ldy #$24                     ; CED0= A0 24        $
-                jmp LD3A1                    ; CED2= 4C A1 D3    L!S
+                jmp copyFourBytesWithinVDUVariables                    ; CED2= 4C A1 D3    L!S
 
 ; Copy Electron 'acorn' to soft cursor store
 ; ------------------------------------------
@@ -6538,7 +6542,7 @@ LCFD7:
                 bpl LCFE1                    ; CFDC= 10 03       ..
                 jsr LCFFC                    ; CFDE= 20 FC CF     |O
 LCFE1:
-                jsr LD0FE                    ; CFE1= 20 FE D0     ~P
+                jsr plotLine                    ; CFE1= 20 FE D0     ~P
                 jmp LCFEA                    ; CFE4= 4C EA CF    LjO
 
 LCFE7:
@@ -6549,7 +6553,7 @@ LCFED:
                 ldy #$24                     ; CFED= A0 24        $
 LCFEF:
                 ldx #$20                     ; CFEF= A2 20       "
-                jmp LD3A1                    ; CFF1= 4C A1 D3    L!S
+                jmp copyFourBytesWithinVDUVariables                    ; CFF1= 4C A1 D3    L!S
 
 LCFF4:
                 ldx #$24                     ; CFF4= A2 24       "$
@@ -6631,7 +6635,7 @@ LD061:
                 sta $D8                      ; D061= 85 D8       .X
                 ldy #$02                     ; D063= A0 02        .
                 jsr LD087                    ; D065= 20 87 D0     .P
-                jsr LD0BE                    ; D068= 20 BE D0     >P
+                jsr signedDivideCoordinateByTwo                    ; D068= 20 BE D0     >P
                 ldy #$00                     ; D06B= A0 00        .
                 dex                          ; D06D= CA          J
                 dex                          ; D06E= CA          J
@@ -6640,12 +6644,12 @@ LD061:
                 cpy #$03                     ; D075= C0 03       @.
                 beq LD07E                    ; D077= F0 05       p.
                 bcs LD081                    ; D079= B0 06       0.
-                jsr LD0BE                    ; D07B= 20 BE D0     >P
+                jsr signedDivideCoordinateByTwo                    ; D07B= 20 BE D0     >P
 LD07E:
-                jsr LD0BE                    ; D07E= 20 BE D0     >P
+                jsr signedDivideCoordinateByTwo                    ; D07E= 20 BE D0     >P
 LD081:
                 lda vduCurrentScreenMODEGroup                    ; D081= AD 56 03    -V.
-                bne LD0BE                    ; D084= D0 38       P8
+                bne signedDivideCoordinateByTwo                    ; D084= D0 38       P8
                 rts                          ; D086= 60          `
 
 LD087:
@@ -6659,32 +6663,47 @@ LD087:
                 bcc LD0A5                    ; D095= 90 0E       ..
 LD097:
                 lda vduGraphicsWindowPixelsBottomLow,x                  ; D097= BD 02 03    =..
-                adc $0310,y                  ; D09A= 79 10 03    y..
+                adc vduGraphicsCursorPositionXLow,y                  ; D09A= 79 10 03    y..
                 pha                          ; D09D= 48          H
                 lda vduGraphicsWindowPixelsBottomHigh,x                  ; D09E= BD 03 03    =..
-                adc $0311,y                  ; D0A1= 79 11 03    y..
+                adc vduGraphicsCursorPositionXHigh,y                  ; D0A1= 79 11 03    y..
                 clc                          ; D0A4= 18          .
 LD0A5:
-                sta $0311,y                  ; D0A5= 99 11 03    ...
+                sta vduGraphicsCursorPositionXHigh,y                  ; D0A5= 99 11 03    ...
                 adc $030D,y                  ; D0A8= 79 0D 03    y..
                 sta vduGraphicsWindowPixelsBottomHigh,x                  ; D0AB= 9D 03 03    ...
                 pla                          ; D0AE= 68          h
-                sta $0310,y                  ; D0AF= 99 10 03    ...
+                sta vduGraphicsCursorPositionXLow,y                  ; D0AF= 99 10 03    ...
                 clc                          ; D0B2= 18          .
-                adc $030C,y                  ; D0B3= 79 0C 03    y..
+                adc vduGraphicsWindowOriginXLow,y                  ; D0B3= 79 0C 03    y..
                 sta vduGraphicsWindowPixelsBottomLow,x                  ; D0B6= 9D 02 03    ...
-                bcc LD0BE                    ; D0B9= 90 03       ..
+                bcc signedDivideCoordinateByTwo                    ; D0B9= 90 03       ..
                 inc vduGraphicsWindowPixelsBottomHigh,x                  ; D0BB= FE 03 03    ~..
-LD0BE:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Divides the signed 16 bit coordinate value by two
+;
+; On Entry:
+;       X is the offset to the coordinate from .vduGraphicsWindowPixelsBottomLow
+;
+; ***************************************************************************************
+signedDivideCoordinateByTwo:
                 lda vduGraphicsWindowPixelsBottomHigh,x                  ; D0BE= BD 03 03    =..
                 asl a                        ; D0C1= 0A          .
                 ror vduGraphicsWindowPixelsBottomHigh,x                  ; D0C2= 7E 03 03    ~..
                 ror vduGraphicsWindowPixelsBottomLow,x                  ; D0C5= 7E 02 03    ~..
                 rts                          ; D0C8= 60          `
 
-LD0C9:
+; ***************************************************************************************
+;
+; Convert pixel coordinates to external absolute coordinates
+;
+; ***************************************************************************************
+convertPixelGraphicsCoordinatesToExternal:
                 ldy #$10                     ; D0C9= A0 10        .
-                jsr LD39F                    ; D0CB= 20 9F D3     .S
+                jsr copyGraphicsCursorPixelPosition                    ; D0CB= 20 9F D3     .S
                 ldx #$02                     ; D0CE= A2 02       ".
                 ldy #$02                     ; D0D0= A0 02        .
                 jsr LD0E6                    ; D0D2= 20 E6 D0     fP
@@ -6695,24 +6714,51 @@ LD0DC:
                 dey                          ; D0DC= 88          .
                 lsr a                        ; D0DD= 4A          J
                 bne LD0DC                    ; D0DE= D0 FC       P|
+    ; Pixels                                     Number of
+    ; per byte   Screen     Y       MODE       multiplication
+    ; minus one   MODE     Now      group      steps (#shifts)
+    ; --------------------------------------------------------
+    ;    7       MODE 0     1         0              1  (x1)
+    ;    3       MODE 1     2         0              2  (x2)
+    ;    1       MODE 2     3         0              3  (x4)
+    ;    0       MODE 3     -         1              -
+    ;    7       MODE 4     1         2              2  (x2)
+    ;    3       MODE 5     2         2              3  (x4)
+    ;    0       MODE 6     -         3              -
+    ;    0       MODE 7     -         4              -
+    ; --------------------------------------------------------
                 lda vduCurrentScreenMODEGroup                    ; D0E0= AD 56 03    -V.
                 beq LD0E6                    ; D0E3= F0 01       p.
                 iny                          ; D0E5= C8          H
 LD0E6:
-                asl $0310,x                  ; D0E6= 1E 10 03    ...
-                rol $0311,x                  ; D0E9= 3E 11 03    >..
+                asl vduGraphicsCursorPositionXLow,x                  ; D0E6= 1E 10 03    ...
+                rol vduGraphicsCursorPositionXHigh,x                  ; D0E9= 3E 11 03    >..
                 dey                          ; D0EC= 88          .
                 bne LD0E6                    ; D0ED= D0 F7       Pw
                 sec                          ; D0EF= 38          8
                 jsr LD0F4                    ; D0F0= 20 F4 D0     tP
                 inx                          ; D0F3= E8          h
 LD0F4:
-                lda $0310,x                  ; D0F4= BD 10 03    =..
-                sbc $030C,x                  ; D0F7= FD 0C 03    }..
-                sta $0310,x                  ; D0FA= 9D 10 03    ...
+                lda vduGraphicsCursorPositionXLow,x                  ; D0F4= BD 10 03    =..
+                sbc vduGraphicsWindowOriginXLow,x                  ; D0F7= FD 0C 03    }..
+                sta vduGraphicsCursorPositionXLow,x                  ; D0FA= 9D 10 03    ...
                 rts                          ; D0FD= 60          `
 
-LD0FE:
+; ***************************************************************************************
+;
+; Plot a line or a dotted line
+;
+; Bresenham's line drawing algorithm is used.
+; See https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+;
+; In the enclosed BASIC program, we sketch out the ideas behind the assembly that follows.
+; The code plots a bunch of random lines on the screen using standard OS line drawing, then
+; undraws the same set of lines using a BASIC routine that mimics the OS code. The process
+; is slow (it's written in unoptimised BASIC) but it unplots the exact same pixels
+; as the OS routine. See lines.ssd.
+;
+; ***************************************************************************************
+plotLine:
                 jsr LD324                    ; D0FE= 20 24 D3     $S
                 lda $032B                    ; D101= AD 2B 03    -+.
                 eor $0329                    ; D104= 4D 29 03    M).
@@ -6754,13 +6800,13 @@ LD14C:
 LD14E:
                 stx $DD                      ; D14E= 86 DD       .]
                 ldy #$2C                     ; D150= A0 2C        ,
-                jsr LD3A1                    ; D152= 20 A1 D3     !S
+                jsr copyFourBytesWithinVDUVariables                    ; D152= 20 A1 D3     !S
                 lda $DD                      ; D155= A5 DD       %]
                 eor #$04                     ; D157= 49 04       I.
                 sta $DB                      ; D159= 85 DB       .[
                 ora $DC                      ; D15B= 05 DC       .\
                 tax                          ; D15D= AA          *
-                jsr LD397                    ; D15E= 20 97 D3     .S
+                jsr copyTwoBytesWithinVDUVariablesToPlotLineTerminationValue                    ; D15E= 20 97 D3     .S
                 lda $031F                    ; D161= AD 1F 03    -..
                 and #$10                     ; D164= 29 10       ).
                 asl a                        ; D166= 0A          .
@@ -6792,7 +6838,7 @@ LD18A:
                 txa                          ; D18E= 8A          .
                 ora #$04                     ; D18F= 09 04       ..
                 tax                          ; D191= AA          *
-                jsr LD397                    ; D192= 20 97 D3     .S
+                jsr copyTwoBytesWithinVDUVariablesToPlotLineTerminationValue                    ; D192= 20 97 D3     .S
 LD195:
                 jsr LD343                    ; D195= 20 43 D3     CS
                 lda $DC                      ; D198= A5 DC       %\
@@ -7056,7 +7102,7 @@ LD343:
 LD34E:
                 ldx #$28                     ; D34E= A2 28       "(
                 ldy #$37                     ; D350= A0 37        7
-                jsr LD3A1                    ; D352= 20 A1 D3     !S
+                jsr copyFourBytesWithinVDUVariables                    ; D352= 20 A1 D3     !S
                 sec                          ; D355= 38          8
                 ldx $DC                      ; D356= A6 DC       &\
                 lda $0330                    ; D358= AD 30 03    -0.
@@ -7070,8 +7116,30 @@ LD36A:
                 sta $DB                      ; D36A= 85 DB       .[
                 sty $DA                      ; D36C= 84 DA       .Z
                 ldx #$35                     ; D36E= A2 35       "5
-LD370:
-                jsr LD37E                    ; D370= 20 7E D3     ~S
+; fall through...
+
+; ***************************************************************************************
+;
+; Line Initialisation
+;
+; This is used in both line drawing and triangle filling to initialise the variables needed
+; to track along the edge. Sets the deltas to absolute values, and initialises an error
+; term to half the absolute delta in Y.
+;
+;   Let src  = .vduVariablesStart + X
+;   src[4,5] = ABS(src[4,5])
+;   src[2,3] = ABS(src[2,3])
+;   src[0,1] = src[4,5] / 2
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;
+; On Exit:
+;       AY = absolute value of src[2,3]
+;
+; ***************************************************************************************
+lineInitialisation:
+                jsr absoluteValue                    ; D370= 20 7E D3     ~S
                 lsr a                        ; D373= 4A          J
                 sta vduGraphicsWindowPixelsLeftHigh,x                  ; D374= 9D 01 03    ...
                 tya                          ; D377= 98          .
@@ -7079,7 +7147,27 @@ LD370:
                 sta vduGraphicsWindowPixelsLeftLow,x                  ; D379= 9D 00 03    ...
                 dex                          ; D37C= CA          J
                 dex                          ; D37D= CA          J
-LD37E:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Absolute value
+;
+; Make sure that the 16 bit coordinate at (vduVariablesStart + 4 + X)
+; is not negative, by negating it if necessary.
+;
+; On Entry:
+;       X is offset to vdu variable i.e.:
+;       (vduVariablesStart + 4 + X) has the low byte of the coordinate
+;       (vduVariablesStart + 5 + X) has the high byte of the coordinate
+;
+; On Exit:
+;       A is the high byte of the result (also stored in .vduVariablesStart + 5 + X)
+;       Y is the low byte of the result  (also stored in .vduVariablesStart + 4 + X)
+;       X is preserved
+;
+; ***************************************************************************************
+absoluteValue:
                 ldy vduGraphicsWindowPixelsRightLow,x                  ; D37E= BC 04 03    <..
                 lda vduGraphicsWindowPixelsRightHigh,x                  ; D381= BD 05 03    =..
                 bpl LD392                    ; D384= 10 0C       ..
@@ -7092,25 +7180,80 @@ LD37E:
 LD392:
                 rts                          ; D392= 60          `
 
-LD393:
+
+; ***************************************************************************************
+;
+; Copy eight bytes (four coordinates) of VDU variables
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;       Y = destination (offset from .vduVariablesStart)
+;
+; ***************************************************************************************
+copyEightBytesWithinVDUVariables:
                 lda #$08                     ; D393= A9 08       ).
-                bne LD3A3                    ; D395= D0 0C       P.
-LD397:
+                bne copyABytesWithinVDUVariables                    ; D395= D0 0C       P.
+
+; ***************************************************************************************
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+copyTwoBytesWithinVDUVariablesToPlotLineTerminationValue:
                 ldy #$30                     ; D397= A0 30        0
-LD399:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Copy two bytes (one coordinate) of VDU variables
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;       Y = destination (offset from .vduVariablesStart)
+;
+; ***************************************************************************************
+copyTwoBytesWithinVDUVariables:
                 lda #$02                     ; D399= A9 02       ).
-                bne LD3A3                    ; D39B= D0 06       P.
-LD39D:
+                bne copyABytesWithinVDUVariables                    ; D39B= D0 06       P.
+
+; ***************************************************************************************
+copyGraphicsCursorPixelPositionToWorkspaceABCD:
                 ldy #$28                     ; D39D= A0 28        (
-LD39F:
+    ; fall through...
+
+; ***************************************************************************************
+; On Entry:
+;       Y = destination (offset from .vduVariablesStart)
+copyGraphicsCursorPixelPosition:
                 ldx #$24                     ; D39F= A2 24       "$
-LD3A1:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Copy four bytes (e.g. one pair of coordinates) of VDU variables
+;
+; On Entry:
+;       X = source (offset from .vduVariablesStart)
+;       Y = destination (offset from .vduVariablesStart)
+;
+; ***************************************************************************************
+copyFourBytesWithinVDUVariables:
                 lda #$04                     ; D3A1= A9 04       ).
-LD3A3:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Copy a number of bytes in VDU variables
+;
+; On Entry:
+;       A = number of bytes to copy
+;       X = source (offset from .vduVariablesStart)
+;       Y = destination (offset from .vduVariablesStart)
+;
+; ***************************************************************************************
+copyABytesWithinVDUVariables:
                 sta $D8                      ; D3A3= 85 D8       .X
 LD3A5:
-                lda vduGraphicsWindowPixelsLeftLow,x                  ; D3A5= BD 00 03    =..
-                sta vduGraphicsWindowPixelsLeftLow,y                  ; D3A8= 99 00 03    ...
+                lda vduVariablesStart,x                  ; D3A5= BD 00 03    =..
+                sta vduVariablesStart,y                  ; D3A8= 99 00 03    ...
                 inx                          ; D3AB= E8          h
                 iny                          ; D3AC= C8          H
                 dec $D8                      ; D3AD= C6 D8       FX
@@ -7222,7 +7365,7 @@ LD457:
                 jsr LD4C2                    ; D459= 20 C2 D4     BT
 LD45C:
                 jsr LCFEA                    ; D45C= 20 EA CF     jO
-                jmp LD0C9                    ; D45F= 4C C9 D0    LIP
+                jmp convertPixelGraphicsCoordinatesToExternal                    ; D45F= 4C C9 D0    LIP
 
 LD462:
                 lda $D1                      ; D462= A5 D1       %Q
@@ -7322,12 +7465,12 @@ osword0D:
 LD4EB:
                 pha                          ; D4EB= 48          H
                 jsr LCD1E                    ; D4EC= 20 1E CD     .M
-                jsr LD0C9                    ; D4EF= 20 C9 D0     IP
+                jsr convertPixelGraphicsCoordinatesToExternal                    ; D4EF= 20 C9 D0     IP
                 ldx #$03                     ; D4F2= A2 03       ".
                 pla                          ; D4F4= 68          h
                 tay                          ; D4F5= A8          (
 LD4F6:
-                lda $0310,x                  ; D4F6= BD 10 03    =..
+                lda vduGraphicsCursorPositionXLow,x                  ; D4F6= BD 10 03    =..
 .if version==300
                 jsr LE75F_300
 .else
@@ -7341,7 +7484,7 @@ LD4F6:
 LD500:
                 ldx #$20                     ; D500= A2 20       "
                 ldy #$3E                     ; D502= A0 3E        >
-                jsr LD393                    ; D504= 20 93 D3     .S
+                jsr copyEightBytesWithinVDUVariables                    ; D504= 20 93 D3     .S
                 jsr LD548                    ; D507= 20 48 D5     HU
                 ldx #$14                     ; D50A= A2 14       ".
                 ldy #$24                     ; D50C= A0 24        $
@@ -7353,7 +7496,7 @@ LD500:
                 lda $032B                    ; D51B= AD 2B 03    -+.
                 sta $0332                    ; D51E= 8D 32 03    .2.
                 ldx #$28                     ; D521= A2 28       "(
-                jsr LD370                    ; D523= 20 70 D3     pS
+                jsr lineInitialisation                    ; D523= 20 70 D3     pS
                 ldy #$2E                     ; D526= A0 2E        .
                 jsr LCFEF                    ; D528= 20 EF CF     oO
                 jsr LCD1E                    ; D52B= 20 1E CD     .M
@@ -7366,7 +7509,7 @@ LD500:
                 jsr LD56E                    ; D53B= 20 6E D5     nU
                 ldx #$3E                     ; D53E= A2 3E       ">
                 ldy #$20                     ; D540= A0 20
-                jsr LD393                    ; D542= 20 93 D3     .S
+                jsr copyEightBytesWithinVDUVariables                    ; D542= 20 93 D3     .S
                 jmp LCFEA                    ; D545= 4C EA CF    LjO
 
 LD548:
@@ -7400,7 +7543,7 @@ LD56E:
                 lda $0336                    ; D576= AD 36 03    -6.
                 sta $033D                    ; D579= 8D 3D 03    .=.
                 ldx #$33                     ; D57C= A2 33       "3
-                jsr LD370                    ; D57E= 20 70 D3     pS
+                jsr lineInitialisation                    ; D57E= 20 70 D3     pS
                 ldy #$39                     ; D581= A0 39        9
                 jsr LCFEF                    ; D583= 20 EF CF     oO
                 sec                          ; D586= 38          8
@@ -7452,7 +7595,7 @@ LD5D2:
                 bne LD624                    ; D5E5= D0 3D       P=
                 ldx #$04                     ; D5E7= A2 04       ".
                 ldy $DD                      ; D5E9= A4 DD       $]
-                jsr LD399                    ; D5EB= 20 99 D3     .S
+                jsr copyTwoBytesWithinVDUVariables                    ; D5EB= 20 99 D3     .S
                 ldx $DD                      ; D5EE= A6 DD       &]
 LD5F0:
                 jsr setScreenAddress                    ; D5F0= 20 7A D7     zW
@@ -7798,7 +7941,7 @@ LD7E5:
                 bvs LD808                    ; D7F4= 70 12       p.
                 ldx #$18                     ; D7F6= A2 18       ".
                 ldy #$64                     ; D7F8= A0 64        d
-                jsr LD399                    ; D7FA= 20 99 D3     .S
+                jsr copyTwoBytesWithinVDUVariables                    ; D7FA= 20 99 D3     .S
                 jsr setUpWriteCursor                    ; D7FD= 20 C1 CC     AL
                 lda #$02                     ; D800= A9 02       ).
                 jsr LC523                    ; D802= 20 23 C5     #E
