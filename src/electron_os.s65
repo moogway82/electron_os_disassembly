@@ -4019,9 +4019,7 @@ screenDisplayMemoryIndexTable:
                 .byte $02
                 .byte $02
                 .byte $03
-.if version==100 && subVersion==7
-                .byte $04
-.else
+.if !(version==100 && subVersion==7)
                 .byte $03
 .endif
 
