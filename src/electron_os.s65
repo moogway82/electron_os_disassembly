@@ -5619,6 +5619,7 @@ LCB68:
 .if version==100 && subVersion==7
                 adc #2                                      ; A = A + 2       A = 2 3 4 5 6
                 eor #7                                      ; A = A EOR 7     A = 5 4 3 2 1
+                lsr a                                       ; A = A / 2       A = 2 2 1 1 0
 .else
                 lsr a                        																; CB81= 4A          J
                 eor #$01                    																; CB82= 49 01       I.
@@ -5636,7 +5637,10 @@ LCB68:
                 lda bytesPerRowLow,x                  														; CB85= BD 0F C4    =.D
 
                 sta vduBytesPerCharacterRowLow               ; store bytes per character row 		    	; CB88= 8D 52 03    .R.
-                inx                          																; CB8B= E8          h
+.if !(version==100 && subVersion==7)
+; I feel like this shouldn't be here - not in the BEEB with Mode 7 included...
+                inx        
+.endif                  																; CB8B= E8          h
                 stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
                 lda #%01000011                				 ; Clear: paged scrolling selected, software scrolling (text window),
                 											 ; not used, graphics cursor enabled (VDU 5), VDU disabled  	; CB8F= A9 43       )C
