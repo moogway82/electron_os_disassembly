@@ -5614,11 +5614,15 @@ LCB68:
                 sta vduScreenSizeHighByte                    												; CB77= 8D 54 03    .T.
                 lda screenMemoryStartHigh,y                  												; CB7A= B9 0B C4    9.D
                 sta vduStartScreenAddressHighByte                    										; CB7D= 8D 4E 03    .N.
-                
-                ; A=Y=the screen memory type
-                tya                         																; CB80= 98          .
+                                                            ; A=Y=the screen memory type
+                tya                                         ; A = Y           A = 0 1 2 3 4                         																; CB80= 98          .
+.if version==100 && subVersion==7
+                adc #2                                      ; A = A + 2       A = 2 3 4 5 6
+                eor #7                                      ; A = A EOR 7     A = 5 4 3 2 1
+.else
                 lsr a                        																; CB81= 4A          J
                 eor #$01                    																; CB82= 49 01       I.
+.endif
                 tax                          				; X=A Index into multiplication table												; CB84= AA          *
                                                             ; (0 = MODE 7
                                                             ;  1 = MODE 4,5,6
