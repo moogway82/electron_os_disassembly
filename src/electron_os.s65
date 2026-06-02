@@ -1584,7 +1584,7 @@ vduBackgroundGCOLMode                      = $035C     ; GCOL background mode
 vduJumpVectorLow                           = $035D     ;
 vduJumpVectorHigh                          = $035E     ;
 
-vduLastCursorStartRegisterValue            = $035F     ;
+vduLastCursorStartRegisterValue            = $035F     ; contains a record of the last setting of the cursor start register.
 
 vduNumberOfLogicalColoursMinusOne          = $0360     ;
 vduPixelsPerByteMinusOne                   = $0361     ;
@@ -5246,7 +5246,7 @@ LC96B:
                 cpy #$02                     ; C970= C0 02       @.
                 beq LC962                    ; C972= F0 EE       pn
                 bcc LC955                    ; C974= 90 DF       ._
-LC976:
+setVduLastCursorStartRegisterValueTo10:
                 ldy #$0A                     ; C976= A0 0A        .
                 bne LC967                    ; C978= D0 ED       Pm
 LC97A:
@@ -5638,7 +5638,7 @@ LCB68:
 
                 sta vduBytesPerCharacterRowLow               ; store bytes per character row 		    	; CB88= 8D 52 03    .R.
 .if !(version==100 && subVersion==7)
-; I feel like this shouldn't be here - not in the BEEB with Mode 7 included...
+; Don't increment this with Mode 7 support as high byte should be 0 for Mode 7, 1 for Modes 4-6 and 2 for high colour 0-3
                 inx        
 .endif                  																; CB8B= E8          h
                 stx vduBytesPerCharacterRowHigh              ; bytes per character row (high byte)      	; CB8C= 8E 53 03    .S.
@@ -5646,8 +5646,8 @@ LCB68:
                 											 ; not used, graphics cursor enabled (VDU 5), VDU disabled  	; CB8F= A9 43       )C
                 jsr clearVDUStatusByteFlags               	 												; CB91= 20 30 C5     0E
                 jsr vdu20EntryPoint                    		 ; Set Default screen colours					; CB94= 20 F6 C7     vG
-                jsr vdu26EntryPoint                    														; CB97= 20 02 CA     .J
-                jsr LC976                    																; CB9A= 20 76 C9     vI
+                jsr vdu26EntryPoint                          ; set default windows 														; CB97= 20 02 CA     .J
+                jsr setVduLastCursorStartRegisterValueTo10   ; Whut dis?                  																; CB9A= 20 76 C9     vI
 
 initializeDisplayAndHomeCursor:
                 ldx #$00                     																; CB9D= A2 00       ".
