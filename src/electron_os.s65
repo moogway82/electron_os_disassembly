@@ -6359,6 +6359,7 @@ LCED5:
                 stx $DD
                 bne displayACharacterAtAddress
 
+; ***************************************************************************************
 displayACharacter:
 .if version==100 && subVersion==7
                 ldx vduNumberOfLogicalColoursMinusOne              ; number of logical colours less 1
@@ -6392,7 +6393,7 @@ displayCharacterMODE7
                 dey                                         ; Y=Y-1
                 bpl -                                       ; loop back until done
 writeByteToMODE7Screen
-                sta vduWriteCursorScreenAddressLow,x        ; write byte to screen
+                sta (vduWriteCursorScreenAddressLow,x)        ; write byte to screen
                 rts         
 
 ; ***************************************************************************************
