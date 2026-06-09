@@ -4581,7 +4581,7 @@ LC617:
                 lda #$08                     ; C61A= A9 08       ).
                 bit vduStatusByte                      ; C61C= 24 D0       $P
                 bne LC625                    ; C61E= D0 05       P.
-                jsr LC9E1                    ; C620= 20 E1 C9     aI
+                jsr hardwareScrollDown                    ; C620= 20 E1 C9     aI
                 bne LC628                    ; C623= D0 03       P.
 LC625:
                 jsr scrollTextWindowUpwards                    ; C625= 20 3B CD     ;M
@@ -5346,17 +5346,25 @@ LC9D1:
                 ldx vduScreenTopLeftAddressLow                    ; C9D1= AE 50 03    .P.
                 lda vduScreenTopLeftAddressHigh                    ; C9D4= AD 51 03    -Q.
                 jsr LCC4F                    ; C9D7= 20 4F CC     OL
-                bcs LC9F0                    ; C9DA= B0 14       0.
+                bcs hardwareScrollUp                    ; C9DA= B0 14       0.
                 adc vduScreenSizeHighByte                    ; C9DC= 6D 54 03    mT.
-                bcc LC9F0                    ; C9DF= 90 0F       ..
-LC9E1:
+                bcc hardwareScrollUp                    ; C9DF= 90 0F       ..
+
+; ***************************************************************************************
+;
+; Hardware screen scroll up/down
+;
+; Changes the start address of the display
+;
+; ***************************************************************************************
+hardwareScrollDown:
                 ldx vduScreenTopLeftAddressLow                    ; C9E1= AE 50 03    .P.
                 lda vduScreenTopLeftAddressHigh                    ; C9E4= AD 51 03    -Q.
                 jsr LCAC9                    ; C9E7= 20 C9 CA     IJ
-                bpl LC9F0                    ; C9EA= 10 04       ..
+                bpl hardwareScrollUp                    ; C9EA= 10 04       ..
                 sec                          ; C9EC= 38          8
                 sbc vduScreenSizeHighByte                    ; C9ED= ED 54 03    mT.
-LC9F0:
+hardwareScrollUp:
                 sta vduScreenTopLeftAddressHigh                    ; C9F0= 8D 51 03    .Q.
                 stx vduScreenTopLeftAddressLow                    ; C9F3= 8E 50 03    .P.
                 pha                          ; C9F6= 48          H
@@ -5685,7 +5693,7 @@ LCB68:
 initializeDisplayAndHomeCursor:
                 ldx #$00                     																; CB9D= A2 00       ".
                 lda vduStartScreenAddressHighByte                    										; CB9F= AD 4E 03    -N.
-                jsr LC9F0                    																; CBA2= 20 F0 C9     pI
+                jsr hardwareScrollUp                    																; CBA2= 20 F0 C9     pI
                 jsr LC561                    																; CBA5= 20 61 C5     aE
                 jsr LCC03                    																; CBA8= 20 03 CC     .L
                 lda #$00                     ; CBAB= A9 00       ).
