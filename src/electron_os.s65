@@ -3721,7 +3721,17 @@ LC314:
                 .byte 13
                 .byte 13
 
-LC317:
+; ***************************************************************************************
+;
+; Four colour conversion table
+;
+; Used when drawing characters to the screen. The index into the table is a pattern of four
+; bits (%0000-%1111) representing half of the eight bit text character row definition. The
+; value of the array entry is the byte value required to write that pattern of white pixels
+; on screen.
+;
+; ***************************************************************************************
+fourColourMODEByteMaskTable:
                 .byte %00000000
                 .byte %00010001
                 .byte %00100010
@@ -3739,7 +3749,17 @@ LC317:
                 .byte %11101110
                 .byte %11111111
 
-LC327:
+; ***************************************************************************************
+;
+; Sixteen colour conversion table
+;
+; Used when drawing characters to the screen. The index into the table is a pattern of two
+; bits (%00-%11) representing a quarter of the eight bit text character row definition. The
+; value of the array entry is the byte value required to write that pattern of white pixels
+; on screen.
+;
+; ***************************************************************************************
+sixteenColourMODEByteMaskTable:
                 .byte %00000000
                 .byte %01010101
                 .byte %10101010
@@ -4418,27 +4438,36 @@ vdu5EntryPoint:
 ; ***************************************************************************************
 vdu8EntryPoint:
                 jsr isTextCursorActive                    ; C53E= 20 05 C5     .E
+                
                 bne LC59D                    ; C541= D0 5A       PZ
+                
+                
                 dec vduTextCursorXPosition                    ; C543= CE 18 03    N..
                 ldx vduTextCursorXPosition                    ; C546= AE 18 03    ...
                 cpx vduTextWindowLeft                    ; C549= EC 08 03    l..
                 bmi LC56C                    ; C54C= 30 1E       0.
-                lda $D6                      ; C54E= A5 D6       %V
+                
+                
+                lda vduScreenAddressOfGraphicsCursorCellLow                      ; C54E= A5 D6       %V
                 sec                          ; C550= 38          8
                 sbc vduBytesPerCharacter                    ; C551= ED 4F 03    mO.
                 tax                          ; C554= AA          *
-                lda $D7                      ; C555= A5 D7       %W
+                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; C555= A5 D7       %W
                 sbc #$00                     ; C557= E9 00       i.
                 cmp vduStartScreenAddressHighByte                    ; C559= CD 4E 03    MN.
+                
                 bcs LC561                    ; C55C= B0 03       0.
+                
+                
                 adc vduScreenSizeHighByte                    ; C55E= 6D 54 03    mT.
+
 LC561:
-                stx $D6                      ; C561= 86 D6       .V
+                stx vduScreenAddressOfGraphicsCursorCellLow                      ; C561= 86 D6       .V
                 bpl LC569                    ; C563= 10 04       ..
                 sec                          ; C565= 38          8
                 sbc vduScreenSizeHighByte                    ; C566= ED 54 03    mT.
 LC569:
-                sta $D7                      ; C569= 85 D7       .W
+                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; C569= 85 D7       .W
                 rts                          ; C56B= 60          `
 
 LC56C:
@@ -4523,19 +4552,23 @@ vdu9EntryPoint:
                 bne LC62E                    ; C5E6= D0 46       PF
                 ldx vduTextCursorXPosition                    ; C5E8= AE 18 03    ...
                 cpx vduTextWindowRight                    ; C5EB= EC 0A 03    l..
-                bcs LC600                    ; C5EE= B0 10       0.
+                bcs moveTextCursorToLeftEdgeAndDown                    ; C5EE= B0 10       0.
                 inc vduTextCursorXPosition                    ; C5F0= EE 18 03    n..
-                lda $D6                      ; C5F3= A5 D6       %V
+                lda vduScreenAddressOfGraphicsCursorCellLow                      ; C5F3= A5 D6       %V
                 adc vduBytesPerCharacter                    ; C5F5= 6D 4F 03    mO.
                 tax                          ; C5F8= AA          *
-                lda $D7                      ; C5F9= A5 D7       %W
+                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; C5F9= A5 D7       %W
                 adc #$00                     ; C5FB= 69 00       i.
                 jmp LC561                    ; C5FD= 4C 61 C5    LaE
 
-LC600:
+; ***************************************************************************************
+moveTextCursorToLeftEdgeAndDown:
                 lda vduTextWindowLeft                    ; C600= AD 08 03    -..
                 sta vduTextCursorXPosition                    ; C603= 8D 18 03    ...
-LC606:
+                ; fall through...
+
+; ***************************************************************************************
+moveTextCursorDown:
                 clc                          ; C606= 18          .
                 jsr LCAD8                    ; C607= 20 D8 CA     XJ
                 ldx vduTextCursorYPosition                    ; C60A= AE 19 03    ...
@@ -4596,7 +4629,7 @@ LC667:
 ; ***************************************************************************************
 vdu10EntryPoint:
                 jsr isTextCursorActive                    ; C66A= 20 05 C5     .E
-                beq LC606                    ; C66D= F0 97       p.
+                beq moveTextCursorDown                    ; C66D= F0 97       p.
 LC66F:
                 ldx #$02                     ; C66F= A2 02       ".
                 jmp LC59F                    ; C671= 4C 9F C5    L.E
@@ -5299,7 +5332,7 @@ LC9AF:
 LC9C0:
                 lda $080C,x                  ; C9C0= BD 0C 08    =..
                 eor $FB                      ; C9C3= 45 FB       E{
-                sta ($D6),y                  ; C9C5= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; C9C5= 91 D6       .V
                 tya                          ; C9C7= 98          .
                 adc #$07                     ; C9C8= 69 07       i.
                 tay                          ; C9CA= A8          (
@@ -5944,9 +5977,9 @@ restoreWriteCursorNonMODE7:
 LCCCF:
                 sta $D8                      ; CCCF= 85 D8       .X
 LCCD1:
-                lda ($D6),y                  ; CCD1= B1 D6       1V
+                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CCD1= B1 D6       1V
                 eor $D8                      ; CCD3= 45 D8       EX
-                sta ($D6),y                  ; CCD5= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CCD5= 91 D6       .V
                 dey                          ; CCD7= 88          .
                 bpl LCCD1                    ; CCD8= 10 F7       .w
                 pla                          ; CCDA= 68          h
@@ -5986,8 +6019,8 @@ LCCFF:
 LCD0A:
                 lda $DA                      ; CD0A= A5 DA       %Z
                 ldx $D8                      ; CD0C= A6 D8       &X
-                sta $D7                      ; CD0E= 85 D7       .W
-                stx $D6                      ; CD10= 86 D6       .V
+                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CD0E= 85 D7       .W
+                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CD10= 86 D6       .V
                 dec $DC                      ; CD12= C6 DC       F\
                 bne LCCE9                    ; CD14= D0 D3       PS
 LCD16:
@@ -6047,8 +6080,8 @@ LCD5E:
 LCD66:
                 lda $DA                      ; CD66= A5 DA       %Z
                 ldx $D8                      ; CD68= A6 D8       &X
-                sta $D7                      ; CD6A= 85 D7       .W
-                stx $D6                      ; CD6C= 86 D6       .V
+                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CD6A= 85 D7       .W
+                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CD6C= 86 D6       .V
                 dec $DC                      ; CD6E= C6 DC       F\
                 bne LCD47                    ; CD70= D0 D5       PU
                 beq LCD16                    ; CD72= F0 A2       p"
@@ -6068,10 +6101,10 @@ copyCharacterRow:
                 ldy #$00                     ; CD79= A0 00        .
 LCD7B:
                 lda ($D8),y                  ; CD7B= B1 D8       1X
-                sta ($D6),y                  ; CD7D= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CD7D= 91 D6       .V
                 iny                          ; CD7F= C8          H
                 bne LCD7B                    ; CD80= D0 F9       Py
-                inc $D7                      ; CD82= E6 D7       fW
+                inc vduScreenAddressOfGraphicsCursorCellHigh                      ; CD82= E6 D7       fW
                 inc $D9                      ; CD84= E6 D9       fY
                 dex                          ; CD86= CA          J
                 bne LCD7B                    ; CD87= D0 F2       Pr
@@ -6081,7 +6114,7 @@ LCD89:
 LCD8E:
                 dey                          ; CD8E= 88          .
                 lda ($D8),y                  ; CD8F= B1 D8       1X
-                sta ($D6),y                  ; CD91= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CD91= 91 D6       .V
                 tya                          ; CD93= 98          .
                 bne LCD8E                    ; CD94= D0 F8       Px
 LCD96:
@@ -6117,22 +6150,22 @@ LCDBB:
                 dey                          ; CDBE= 88          .
 LCDBF:
                 lda ($D8),y                  ; CDBF= B1 D8       1X
-                sta ($D6),y                  ; CDC1= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CDC1= 91 D6       .V
                 dey                          ; CDC3= 88          .
                 bpl LCDBF                    ; CDC4= 10 F9       .y
                 ldx #$02                     ; CDC6= A2 02       ".
 LCDC8:
                 clc                          ; CDC8= 18          .
-                lda $D6,x                    ; CDC9= B5 D6       5V
+                lda vduScreenAddressOfGraphicsCursorCellLow,x                    ; CDC9= B5 D6       5V
                 adc vduBytesPerCharacter                    ; CDCB= 6D 4F 03    mO.
-                sta $D6,x                    ; CDCE= 95 D6       .V
-                lda $D7,x                    ; CDD0= B5 D7       5W
+                sta vduScreenAddressOfGraphicsCursorCellLow,x                    ; CDCE= 95 D6       .V
+                lda vduScreenAddressOfGraphicsCursorCellHigh,x                    ; CDD0= B5 D7       5W
                 adc #$00                     ; CDD2= 69 00       i.
                 bpl LCDDA                    ; CDD4= 10 04       ..
                 sec                          ; CDD6= 38          8
                 sbc vduScreenSizeHighByte                    ; CDD7= ED 54 03    mT.
 LCDDA:
-                sta $D7,x                    ; CDDA= 95 D7       .W
+                sta vduScreenAddressOfGraphicsCursorCellHigh,x                    ; CDDA= 95 D7       .W
                 dex                          ; CDDC= CA          J
                 dex                          ; CDDD= CA          J
                 beq LCDC8                    ; CDDE= F0 E8       ph
@@ -6157,20 +6190,20 @@ LCDFB:
                 ldy vduBytesPerCharacter                    ; CDFE= AC 4F 03    ,O.
 LCE01:
                 dey                          ; CE01= 88          .
-                sta ($D6),y                  ; CE02= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CE02= 91 D6       .V
                 bne LCE01                    ; CE04= D0 FB       P{
                 txa                          ; CE06= 8A          .
                 clc                          ; CE07= 18          .
                 adc vduBytesPerCharacter                    ; CE08= 6D 4F 03    mO.
                 tax                          ; CE0B= AA          *
-                lda $D7                      ; CE0C= A5 D7       %W
+                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; CE0C= A5 D7       %W
                 adc #$00                     ; CE0E= 69 00       i.
                 bpl LCE16                    ; CE10= 10 04       ..
                 sec                          ; CE12= 38          8
                 sbc vduScreenSizeHighByte                    ; CE13= ED 54 03    mT.
 LCE16:
-                stx $D6                      ; CE16= 86 D6       .V
-                sta $D7                      ; CE18= 85 D7       .W
+                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CE16= 86 D6       .V
+                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CE18= 85 D7       .W
 LCE1A:
                 dec $DA                      ; CE1A= C6 DA       FZ
                 bpl LCDFB                    ; CE1C= 10 DD       .]
@@ -6233,7 +6266,7 @@ setTextCursorScreenAddresses:
 
 .if version==100 && subVersion==7
                 lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
-                sta $D7                             ; .vduWriteCursorScreenAddressHigh=A
+                sta vduScreenAddressOfGraphicsCursorCellHigh                             ; .vduWriteCursorScreenAddressHigh=A
                 iny                                 ; Y=Y+1
                 lda #2                              ; A=2
                 and vduCurrentScreenMODEGroup      ; AND with MODE group:
@@ -6248,18 +6281,18 @@ setTextCursorScreenAddresses:
                 beq LCE58
 .else
                 lda multiplyBy640Table,y
-                sta $D7                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
+                sta vduScreenAddressOfGraphicsCursorCellHigh                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
                 lda multiplyBy640Table+1,y                                                      ; CE4C= B9 6E C3    9nC
                 ldy vduBytesPerCharacterRowHigh                                                 ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
 .endif
-                lsr $D7                      ; CE55= 46 D7       FW
+                lsr vduScreenAddressOfGraphicsCursorCellHigh                      ; CE55= 46 D7       FW
                 ror a                        ; CE57= 6A          j
 LCE58:
                 adc vduScreenTopLeftAddressLow                    ; CE58= 6D 50 03    mP.
-                sta $D6                      ; CE5B= 85 D6       .V
-                lda $D7                      ; CE5D= A5 D7       %W
+                sta vduScreenAddressOfGraphicsCursorCellLow                      ; CE5B= 85 D6       .V
+                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; CE5D= A5 D7       %W
                 adc vduScreenTopLeftAddressHigh                    ; CE5F= 6D 51 03    mQ.
                 tay                          ; CE62= A8          (
                 lda vduTextCursorXPosition                    ; CE63= AD 18 03    -..
@@ -6289,8 +6322,8 @@ skipIncs:
 mode7Cursor:
                 clc                          ; CE7B= 18          .
 skipInc:
-                adc $D6                      ; CE7C= 65 D6       eV
-                sta $D6                      ; CE7E= 85 D6       .V
+                adc vduScreenAddressOfGraphicsCursorCellLow                      ; CE7C= 65 D6       eV
+                sta vduScreenAddressOfGraphicsCursorCellLow                      ; CE7E= 85 D6       .V
                 tax                          ; CE80= AA          *
                 tya                          ; CE81= 98          .
                 adc #$00                     ; CE82= 69 00       i.
@@ -6302,7 +6335,7 @@ skipInc:
                 sec                          ; CE86= 38          8
                 sbc vduScreenSizeHighByte                    ; CE87= ED 54 03    mT.
 LCE8A:
-                sta $D7                      ; CE8A= 85 D7       .W
+                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CE8A= 85 D7       .W
                 clc                          ; CE8C= 18          .
                 rts                          ; CE8D= 60          `
 
@@ -6373,36 +6406,37 @@ displayACharacterAtAddress:
                 bne plotACharacterAtGraphicsCursor                    ; CEE9= D0 A3       P#
                 ldy #$07                     ; CEEB= A0 07        .
                 cpx #$03                     ; CEED= E0 03       `.
-                beq LCEFF                    ; CEEF= F0 0E       p.
+                beq displayACharacter4ColourMODE                    ; CEEF= F0 0E       p.
                 bcs LCF2F                    ; CEF1= B0 3C       0<
 LCEF3:
                 lda ($DC),y                  ; CEF3= B1 DC       1\
                 ora $D2                      ; CEF5= 05 D2       .R
                 eor $D3                      ; CEF7= 45 D3       ES
-                sta ($D6),y                  ; CEF9= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CEF9= 91 D6       .V
                 dey                          ; CEFB= 88          .
                 bpl LCEF3                    ; CEFC= 10 F5       .u
                 rts                          ; CEFE= 60          `
 .if version==100 && subVersion==7
 ; ***************************************************************************************
-displayCharacterMODE7
+displayCharacterMODE7:
                 ldy #$2                                     ; Y=2, loop counter/index into the teletext conversion table
 -                                            
                 cmp teletextCharacterConversionTable,y     ; compare with teletext conversion table
                 beq convertMODE7Character                   ; if (found character to convert) then branch
                 dey                                         ; Y=Y-1
                 bpl -                                       ; loop back until done
-writeByteToMODE7Screen
-                sta (vduWriteCursorScreenAddressLow,x)        ; write byte to screen
+writeByteToMODE7Screen:
+                sta (vduScreenAddressOfGraphicsCursorCellLow,x)        ; write byte to screen
                 rts         
 
 ; ***************************************************************************************
-convertMODE7Character
+convertMODE7Character:
                 lda teletextCharacterConversionTable + 1,y         ; convert with teletext conversion table
                 bne writeByteToMODE7Screen                         ; ALWAYS branch back to write it
 .endif
 
-LCEFF:
+; ***************************************************************************************
+displayACharacter4ColourMODE:
                 lda ($DC),y                  ; CEFF= B1 DC       1\
                 pha                          ; CF01= 48          H
                 lsr a                        ; CF02= 4A          J
@@ -6410,10 +6444,10 @@ LCEFF:
                 lsr a                        ; CF04= 4A          J
                 lsr a                        ; CF05= 4A          J
                 tax                          ; CF06= AA          *
-                lda LC317,x                  ; CF07= BD 17 C3    =.C
+                lda fourColourMODEByteMaskTable,x                  ; CF07= BD 17 C3    =.C
                 ora $D2                      ; CF0A= 05 D2       .R
                 eor $D3                      ; CF0C= 45 D3       ES
-                sta ($D6),y                  ; CF0E= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF0E= 91 D6       .V
                 tya                          ; CF10= 98          .
                 clc                          ; CF11= 18          .
                 adc #$08                     ; CF12= 69 08       i.
@@ -6421,14 +6455,14 @@ LCEFF:
                 pla                          ; CF15= 68          h
                 and #$0F                     ; CF16= 29 0F       ).
                 tax                          ; CF18= AA          *
-                lda LC317,x                  ; CF19= BD 17 C3    =.C
+                lda fourColourMODEByteMaskTable,x                  ; CF19= BD 17 C3    =.C
                 ora $D2                      ; CF1C= 05 D2       .R
                 eor $D3                      ; CF1E= 45 D3       ES
-                sta ($D6),y                  ; CF20= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF20= 91 D6       .V
                 tya                          ; CF22= 98          .
                 sbc #$08                     ; CF23= E9 08       i.
                 tay                          ; CF25= A8          (
-                bpl LCEFF                    ; CF26= 10 D7       .W
+                bpl displayACharacter4ColourMODE                    ; CF26= 10 D7       .W
 LCF28:
                 rts                          ; CF28= 60          `
 
@@ -6449,10 +6483,10 @@ LCF34:
                 asl $DA                      ; CF3B= 06 DA       .Z
                 rol a                        ; CF3D= 2A          *
                 tax                          ; CF3E= AA          *
-                lda LC327,x                  ; CF3F= BD 27 C3    ='C
+                lda sixteenColourMODEByteMaskTable,x                  ; CF3F= BD 27 C3    ='C
                 ora $D2                      ; CF42= 05 D2       .R
                 eor $D3                      ; CF44= 45 D3       ES
-                sta ($D6),y                  ; CF46= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF46= 91 D6       .V
                 clc                          ; CF48= 18          .
                 tya                          ; CF49= 98          .
                 adc #$08                     ; CF4A= 69 08       i.
@@ -7761,10 +7795,10 @@ LD6DE:
                 ldy #$07                     ; D6F6= A0 07        .
                 sec                          ; D6F8= 38          8
 LD6F9:
-                lda ($D6),y                  ; D6F9= B1 D6       1V
+                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D6F9= B1 D6       1V
                 pha                          ; D6FB= 48          H
                 lda $080C,x                  ; D6FC= BD 0C 08    =..
-                sta ($D6),y                  ; D6FF= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D6FF= 91 D6       .V
                 pla                          ; D701= 68          h
                 sta $080C,x                  ; D702= 9D 0C 08    ...
                 inx                          ; D705= E8          h
@@ -7788,7 +7822,7 @@ LD716:
 LD71C:
                 lda vduColourMaskLeft                    ; D71C= AD 62 03    -b.
                 sta $DA                      ; D71F= 85 DA       .Z
-                lda ($D6),y                  ; D721= B1 D6       1V
+                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D721= B1 D6       1V
                 eor vduBackgroundTextColour                    ; D723= 4D 58 03    MX.
                 clc                          ; D726= 18          .
 LD727:
@@ -12529,14 +12563,14 @@ LF0DB_300:
                 ror a
                 sta LFC7F
                 rol a
-                stx $d6
-                sty $d7
+                stx vduScreenAddressOfGraphicsCursorCellLow
+                sty vduScreenAddressOfGraphicsCursorCellHigh
                 ldy #0
                 bvs LF0ED_300
-                lda ($d6),y
+                lda (vduScreenAddressOfGraphicsCursorCellLow),y
 LF0ED_300:
-                sta ($d6),y
-                ldy $d7
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y
+                ldy vduScreenAddressOfGraphicsCursorCellHigh
                 clc
                 ror a
                 sta LFC7F
