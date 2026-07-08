@@ -4344,9 +4344,9 @@ isTextCursorActive:
                 rts
 
 LC50A:
-                jsr LD6DE                    ; C50A= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; C50A= 20 DE D6     ^V
                 jsr LDEFB                    ; C50D= 20 FB DE     {^
-                jmp LD6DE                    ; C510= 4C DE D6    L^V
+                jmp swapSoftwareCursorAndScreenData                    ; C510= 4C DE D6    L^V
 
 ; ***************************************************************************************
 ;
@@ -4501,7 +4501,7 @@ LC59D:
                 ldx #$00                     ; C59D= A2 00       ".
 LC59F:
                 stx $D9                      ; C59F= 86 D9       .Y
-                jsr LD01E                    ; C5A1= 20 1E D0     .P
+                jsr checkGraphicsCursorIsWithinGraphicsWindow                    ; C5A1= 20 1E D0     .P
                 ldx $D9                      ; C5A4= A6 D9       &Y
                 sec                          ; C5A6= 38          8
                 lda $0324,x                  ; C5A7= BD 24 03    =$.
@@ -4512,7 +4512,7 @@ LC59F:
 LC5B4:
                 lda $D8                      ; C5B4= A5 D8       %X
                 bne LC5D6                    ; C5B6= D0 1E       P.
-                jsr LD01E                    ; C5B8= 20 1E D0     .P
+                jsr checkGraphicsCursorIsWithinGraphicsWindow                    ; C5B8= 20 1E D0     .P
                 beq LC5D6                    ; C5BB= F0 19       p.
                 ldx $D9                      ; C5BD= A6 D9       &Y
                 lda vduGraphicsWindowPixelsRightLow,x                  ; C5BF= BD 04 03    =..
@@ -4594,7 +4594,7 @@ LC62E:
                 ldx #$00                     ; C62E= A2 00       ".
 LC630:
                 stx $D9                      ; C630= 86 D9       .Y
-                jsr LD01E                    ; C632= 20 1E D0     .P
+                jsr checkGraphicsCursorIsWithinGraphicsWindow                    ; C632= 20 1E D0     .P
                 ldx $D9                      ; C635= A6 D9       &Y
                 clc                          ; C637= 18          .
                 lda $0324,x                  ; C638= BD 24 03    =$.
@@ -4605,7 +4605,7 @@ LC630:
 LC645:
                 lda $D8                      ; C645= A5 D8       %X
                 bne LC667                    ; C647= D0 1E       P.
-                jsr LD01E                    ; C649= 20 1E D0     .P
+                jsr checkGraphicsCursorIsWithinGraphicsWindow                    ; C649= 20 1E D0     .P
                 beq LC667                    ; C64C= F0 19       p.
                 ldx $D9                      ; C64E= A6 D9       &Y
                 lda vduGraphicsWindowPixelsLeftLow,x                  ; C650= BD 00 03    =..
@@ -4688,9 +4688,9 @@ LC6AF:
                 sta $0328,y                  ; C6B1= 99 28 03    .(.
                 dey                          ; C6B4= 88          .
                 bpl LC6AF                    ; C6B5= 10 F8       .x
-                jsr LD6DE                    ; C6B7= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; C6B7= 20 DE D6     ^V
                 ldx #$28                     ; C6BA= A2 28       "(
-                jsr LD05A                    ; C6BC= 20 5A D0     ZP
+                jsr plotConvertExternalAbsoluteCoordinatesToPixels                    ; C6BC= 20 5A D0     ZP
                 ldx #$28                     ; C6BF= A2 28       "(
                 jsr checkPointXInBoundsAndSetScreenAddresses                    ; C6C1= 20 75 D7     uW
                 bne LC6E1                    ; C6C4= D0 1B       P.
@@ -4708,7 +4708,7 @@ LC6D2:
                 lda $D8                      ; C6D5= A5 D8       %X
                 and vduNumberOfLogicalColoursMinusOne                    ; C6D7= 2D 60 03    -`.
 LC6DA:
-                jsr LD6DE                    ; C6DA= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; C6DA= 20 DE D6     ^V
                 ldy #$04                     ; C6DD= A0 04        .
                 bne LC6ED                    ; C6DF= D0 0C       P.
 LC6E1:
@@ -4839,7 +4839,7 @@ vdu16EntryPoint:
                 beq LC7A4                    ; C76F= F0 33       p3
                 ldx vduBackgroundGraphicsColour                    ; C771= AE 5A 03    .Z.
                 ldy $035C                    ; C774= AC 5C 03    ,\.
-                jsr LCFC4                    ; C777= 20 C4 CF     DO
+                jsr setGraphicsColourMaskXY                    ; C777= 20 C4 CF     DO
                 ldx #$00                     ; C77A= A2 00       ".
                 ldy #$28                     ; C77C= A0 28        (
                 jsr copyEightBytesWithinVDUVariables                    ; C77E= 20 93 D3     .S
@@ -5046,7 +5046,7 @@ LC848:
 LC85A:
                 cmp #$08                     ; C85A= C9 08       I.
                 bcc LC863                    ; C85C= 90 05       ..
-                eor $0248                    ; C85E= 4D 48 02    MH.
+                eor videoULAVideoControlRegisterCopy                    ; C85E= 4D 48 02    MH.
                 sta $FB                      ; C861= 85 FB       .{
 LC863:
                 tya                          ; C863= 98          .
@@ -5112,7 +5112,7 @@ LC8A9:
                 pha                          ; C8B1= 48          H
                 tya                          ; C8B2= 98          .
                 and #$07                     ; C8B3= 29 07       ).
-                eor $0248                    ; C8B5= 4D 48 02    MH.
+                eor videoULAVideoControlRegisterCopy                    ; C8B5= 4D 48 02    MH.
                 sec                          ; C8B8= 38          8
                 jsr LC848                    ; C8B9= 20 48 C8     HH
                 pla                          ; C8BC= 68          h
@@ -5130,11 +5130,11 @@ LC8C5:
                 lda LC423,x                  ; C8C8= BD 23 C4    =#D
                 ldx $FA                      ; C8CB= A6 FA       &z
                 and LC427,x                  ; C8CD= 3D 27 C4    ='D
-                sta $FC                      ; C8D0= 85 FC       .|
+                sta interruptAccumulator                      ; C8D0= 85 FC       .|
                 lda LC427,x                  ; C8D2= BD 27 C4    ='D
                 eor #$FF                     ; C8D5= 49 FF       I.
                 and $0804,y                  ; C8D7= 39 04 08    9..
-                ora $FC                      ; C8DA= 05 FC       .|
+                ora interruptAccumulator                      ; C8DA= 05 FC       .|
                 sta $0804,y                  ; C8DC= 99 04 08    ...
                 tax                          ; C8DF= AA          *
                 lda vduTextCursorCRTCAddressHigh                    ; C8E0= AD 4B 03    -K.
@@ -5299,40 +5299,41 @@ LC97A:
 vdu25Parameter5 = $031F
 
 vdu25EntryPoint:
-                ldx vduPixelsPerByteMinusOne                    ; C986= AE 61 03    .a.
-                beq vduPlotExtension                    ; C989= F0 AC       p,
-                jmp LCF71                    ; C98B= 4C 71 CF    LqO
+                ldx vduPixelsPerByteMinusOne            ; get pixels per byte         ; C986= AE 61 03    .a.
+                beq vduPlotExtension                    ; if (zero, i.e. no graphics available) then branch (plot extension) ; C989= F0 AC       p,
+                jmp vdu25Plot                               ; jump to main plot routine        ; C98B= 4C 71 CF    LqO
 
-LC98E:
-                clc                          ; C98E= 18          .
-                lda vduLastCursorStartRegisterValue                    ; C98F= AD 5F 03    -_.
-                adc vduTextCursorCRTCAddressLow                    ; C992= 6D 4A 03    mJ.
-                sta vduTextCursorCRTCAddressLow                    ; C995= 8D 4A 03    .J.
-                lda vduTextCursorCRTCAddressHigh                    ; C998= AD 4B 03    -K.
-                bmi LC9D0                    ; C99B= 30 33       03
-                bcc LC9A4                    ; C99D= 90 05       ..
-                eor #$40                     ; C99F= 49 40       I@
-                sta vduTextCursorCRTCAddressHigh                    ; C9A1= 8D 4B 03    .K.
+; This seems to be setting the Software Cursor, but I've still not really understood it...
+renderCursorMAYBE: 
+                clc                                     ; Carry = 0 	; C98E= 18          .
+                lda vduLastCursorStartRegisterValue     ; A = Scan line no. (eg 0xA/10) cursor should be started in it's char block (R10 on 6845 equiv.)               ; C98F= AD 5F 03    -_.
+                adc vduTextCursorCRTCAddressLow         ; Add scan line number to the Low address of the current cursor position WHY??           ; C992= 6D 4A 03    mJ.
+                sta vduTextCursorCRTCAddressLow         ; Save that back as the current Low address of the cursor WHY??           ; C995= 8D 4A 03    .J.
+                lda vduTextCursorCRTCAddressHigh        ; Load in the High Address of the cursor?            ; C998= AD 4B 03    -K.
+                bmi LC9D0                               ; Branch to RTS if High Addrsss is negative signed (b7 = 1)	; C99B= 30 33       03
+                bcc LC9A4                               ; Branch if addition DIDN'T roll over...	; C99D= 90 05       ..
+                eor #$40                                ; Toggle b6 in Address High			 ; C99F= 49 40       I@
+                sta vduTextCursorCRTCAddressHigh        ; Store that new address            ; C9A1= 8D 4B 03    .K.
 LC9A4:
-                and #$40                     ; C9A4= 29 40       )@
-                beq LC9AF                    ; C9A6= F0 07       p.
-                lda vduNumberOfLogicalColoursMinusOne                    ; C9A8= AD 60 03    -`.
-                sbc #$04                     ; C9AB= E9 04       i.
-                ora #$3F                     ; C9AD= 09 3F       .?
+                and #$40                                ; AND CRTC High Byte		; C9A4= 29 40       )@
+                beq LC9AF                               ; Branch if b6 is not set		; C9A6= F0 07       p.
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours (this will be 0 in MODE 7 if supported)                 ; C9A8= AD 60 03    -`.
+                sbc #$04                                ; Subtract with carry 4     ; C9AB= E9 04       i.
+                ora #$3F                                ; OR 0x3F - Dont understand will always be FF for the logical colour numbers for all modes      ; C9AD= 09 3F       .?
 LC9AF:
-                sta $FB                      ; C9AF= 85 FB       .{
-                lda vduStatusByte                      ; C9B1= A5 D0       %P
-                and #$30                     ; C9B3= 29 30       )0
-                bne LC9D0                    ; C9B5= D0 19       P.
-                tax                          ; C9B7= AA          *
-                lda vduNumberOfLogicalColoursMinusOne                    ; C9B8= AD 60 03    -`.
-                sta $FA                      ; C9BB= 85 FA       .z
-                ldy #$07                     ; C9BD= A0 07        .
-                sec                          ; C9BF= 38          8
-LC9C0:
-                lda $080C,x                  ; C9C0= BD 0C 08    =..
+                sta $FB                                 ; Should be a variable used by INT routines... Store the high byte if b6 not set?        ; C9AF= 85 FB       .{
+                lda vduStatusByte                       ; Load VDU Status        ; C9B1= A5 D0       %P
+                and #$30                                ; Check bits 4 (not used) & 5 (gfx cursor)        ; C9B3= 29 30       )0
+                bne LC9D0                               ; Branch if gfx cursor set        ; C9B5= D0 19       P.
+                tax                                     ; Stash status bits 4&5 in X        ; C9B7= AA          *
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logica colours, again                 ; C9B8= AD 60 03    -`.
+                sta $FA                                 ; Store it in FA, ok...    ; C9BB= 85 FA       .z
+                ldy #$07                                ; Load 7 into Y         ; C9BD= A0 07        .
+                sec                                     ; Set Carry Flag        ; C9BF= 38          8
+ LC9C0:
+                lda channel0PhaseCounter,x              ; Load whatever is in the sound envelope stuff at status byte with carry??    ; C9C0= BD 0C 08    =..
                 eor $FB                      ; C9C3= 45 FB       E{
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; C9C5= 91 D6       .V
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y  ; Write to the Y'th byte of the current cell that Cursor should be shown                ; C9C5= 91 D6       .V
                 tya                          ; C9C7= 98          .
                 adc #$07                     ; C9C8= 69 07       i.
                 tay                          ; C9CA= A8          (
@@ -5427,9 +5428,9 @@ vdu24EntryPoint:
                 ora $032D                    ; CA42= 0D 2D 03    .-.
                 bmi LCA80                    ; CA45= 30 39       09
                 ldx #$20                     ; CA47= A2 20       "
-                jsr LD05A                    ; CA49= 20 5A D0     ZP
+                jsr plotConvertExternalAbsoluteCoordinatesToPixels                    ; CA49= 20 5A D0     ZP
                 ldx #$1C                     ; CA4C= A2 1C       ".
-                jsr LD05A                    ; CA4E= 20 5A D0     ZP
+                jsr plotConvertExternalAbsoluteCoordinatesToPixels                    ; CA4E= 20 5A D0     ZP
                 lda $031F                    ; CA51= AD 1F 03    -..
                 ora $031D                    ; CA54= 0D 1D 03    ...
                 bmi LCA80                    ; CA57= 30 27       0'
@@ -5820,7 +5821,7 @@ LCC12:
                 lda $036F,x                  ; Get palette entry X
                 cmp #$08                     ; CC21= C9 08       I.
                 bcc LCC28                    ; CC23= 90 03       ..
-                eor $0248                    ; CC25= 4D 48 02    MH.
+                eor videoULAVideoControlRegisterCopy                    ; CC25= 4D 48 02    MH.
 LCC28:
                 pha                          ; CC28= 48          H
                 ldy #$07                     ; CC29= A0 07        .
@@ -6356,7 +6357,7 @@ plotACharacterAtGraphicsCursor:
                 ldx vduForegroundGraphicsColour                    ; CE8E= AE 59 03    .Y.
                 ldy vduForegroundGCOLMode                    ; CE91= AC 5B 03    ,[.
 plotACharacterWithXYAsGraphicsColourAndGCOLMode:
-                jsr LCFC4                    ; CE94= 20 C4 CF     DO
+                jsr setGraphicsColourMaskXY                    ; CE94= 20 C4 CF     DO
                 jsr copyGraphicsCursorPixelPositionToWorkspaceABCD                    ; CE97= 20 9D D3     .S
                 ldy #$00                     ; CE9A= A0 00        .
 displayNextRowOfCharacter:
@@ -6366,7 +6367,7 @@ displayNextRowOfCharacter:
                 sta $DB                      ; CEA2= 85 DB       .[
 LCEA4:
                 bpl LCEA9                    ; CEA4= 10 03       ..
-                jsr LCFF4                    ; CEA6= 20 F4 CF     tO
+                jsr plotAPixelInACharacter                    ; CEA6= 20 F4 CF     tO
 LCEA9:
                 inc $0324                    ; CEA9= EE 24 03    n$.
                 bne LCEB1                    ; CEAC= D0 03       P.
@@ -6522,42 +6523,141 @@ LCF68:
                 sta $DC                      ; CF6E= 85 DC       .\
                 rts                          ; CF70= 60          `
 
-LCF71:
-                ldx #$20                     ; CF71= A2 20       "
-                jsr LD05E                    ; CF73= 20 5E D0     ^P
+; ***************************************************************************************
+; ***************************************************************************************
+;
+; Chapter 8: PLOT
+;
+; ***************************************************************************************
+; ***************************************************************************************
+
+; ***************************************************************************************
+;
+; Plot routine
+;
+; See plot.png
+; The plot routine is a multi-purpose tool for drawing graphics. It renders points,
+; lines, dotted lines, filled triangles, and single horizontal line fills. It can also just
+; move the current graphics cursor position. The lower three bits of the plot type hold plot
+; options:
+;
+; Plot Options:
+;   0         Move relative to last point
+;   1         Draw relative to last point in foreground colour
+;   2         Draw relative to last point in inverse colour
+;   3         Draw relative to last point in background colour
+;   4         Move absolute
+;   5         Draw absolute in foreground colour
+;   6         Draw absolute in inverse colour
+;   7         Draw absolute in background colour
+;
+; ---------------------------------------------------------------------------------------
+; PLOT TYPE   RANGE IN BINARY      BITS3-6    DESCRIPTION
+; RANGE       abcdefgh-abcdefgh    bcde
+; ---------------------------------------------------------------------------------------
+; 0-7         00000000-00000111    0000       Move/Draw line with standard options 0-7
+; 8-15        00001000-00001111    0001       As 0-7 but with the last point in a line omitted
+;                                             when plotting with GCOL mode 3 (EOR) or 4
+;                                             (INVERT)
+; 16-23       00010000-00010111    0010       As 0-7 but with a dotted line
+; 24-31       00011000-00011111    0011       As 0-7 but with a dotted line and the last point
+;                                             in a line omitted when plotting with GCOL mode 3
+;                                             (EOR) or 4 (INVERT)
+; 32-39       00100000-00100111    0100       RESERVED for future expansion
+; 40-47       00101000-00101111    0101       RESERVED for future expansion
+; 48-55       00110000-00110111    0110       RESERVED for future expansion
+; 56-63       00111000-00111111    0111       RESERVED for future expansion
+; 64-71       01000000-01000111    1000       As 0-7 but only a single point is plotted
+; 72-79       01001000-01001111    1001       As 0-7 but fill one line horizontally left and
+;                                             right
+; 80-87       01010000-01010111    1010       As 0-7 but fill a triangle
+; 88-95       01011000-01011111    1011       As 0-7 but fill one line horizontally right
+; 96-103      01100000-01100111    1100       RESERVED for future expansion
+; 104-111     01101000-01101111    1101       RESERVED for future expansion
+; 112-119     01110000-01110111    1110       RESERVED for future expansion
+; 120-127     01111000-01111111    1111       RESERVED for future expansion
+; 128-255     10000000-11111111    xxxx       RESERVED for future expansion
+; ---------------------------------------------------------------------------------------
+;
+; Coordinate Systems
+;
+; The standard graphics coordinate system ranges from (0,0) at the bottom left of the screen
+; to (1280 x 1024) at the top right. This coordinate range represents the entire screen
+; regardless of the actual number of pixels available on screen.
+;
+; The graphics window origin can be changed to specify where a pixel drawn at (0,0) actually
+; appears on the screen. This is a translation of the coordinate system.
+;
+; These resolution independent coordinates are called 'external' coordinates in this document.
+;
+; When calling the OS, external coordinates can optionally be specified 'relative' to the last
+; point plotted. Coordinates are also always specified relative to the current graphics window
+; origin. When translated into full screen coordinates these are known here as 'absolute'
+; coordinates.
+;
+; Within OS routines absolute coordinates are scaled down to a pixel based scale. These are
+; called 'pixel' coordinates. Pixel coordinates are never 'relative' coordinates in the sense
+; above, but that doesn't stop OS routines temporarily storing the difference between two
+; pixel based coordinates as part of its calculations of course.
+;
+; Conversions between the coordinate systems are done via:
+;
+;       .plotConvertExternalAbsoluteCoordinatesToPixels
+;       .plotConvertExternalRelativeCoordinatesToPixels
+;       .convertPixelGraphicsCoordinatesToExternal
+;
+; ***************************************************************************************
+vdu25ParameterPlotType = vduQueueEndByte - 4
+vdu25ParameterXLow     = vduQueueEndByte - 3
+vdu25ParameterXHigh    = vduQueueEndByte - 2
+vdu25ParameterYLow     = vduQueueEndByte - 1
+vdu25ParameterYHigh    = vduQueueEndByte
+vdu25Plot:
+                ldx  #vdu25ParameterXLow - vduVariablesStart       ; X is offset to X Coordinate (low) ; CF71= A2 20       "
+                jsr plotConvertExternalRelativeCoordinatesToPixels                    ; CF73= 20 5E D0     ^P
                 lda $031F                    ; CF76= AD 1F 03    -..
                 cmp #$04                     ; CF79= C9 04       I.
-                beq LCFEA                    ; CF7B= F0 6D       pm
+                beq plotMoveGraphicsCursorInAbsolutePixels                    ; CF7B= F0 6D       pm
                 ldy #$05                     ; CF7D= A0 05        .
                 and #$03                     ; CF7F= 29 03       ).
                 beq LCF91                    ; CF81= F0 0E       p.
                 lsr a                        ; CF83= 4A          J
-                bcs LCF89                    ; CF84= B0 03       0.
+                bcs plotWithGraphicsColour                    ; CF84= B0 03       0.
                 dey                          ; CF86= 88          .
                 bne LCF91                    ; CF87= D0 08       P.
-LCF89:
+
+; ***************************************************************************************
+;
+; Plot with graphics character
+;
+; On Entry:
+;       A=0 it's a foreground colour
+;       A=1 it's a background colour
+;
+; ***************************************************************************************
+plotWithGraphicsColour:
                 tax                          ; CF89= AA          *
                 ldy vduForegroundGCOLMode,x                  ; CF8A= BC 5B 03    <[.
                 lda vduForegroundGraphicsColour,x                  ; CF8D= BD 59 03    =Y.
                 tax                          ; CF90= AA          *
 LCF91:
-                jsr LCFC4                    ; CF91= 20 C4 CF     DO
+                jsr setGraphicsColourMaskXY                    ; CF91= 20 C4 CF     DO
                 lda $031F                    ; CF94= AD 1F 03    -..
-                bmi LCFBC                    ; CF97= 30 23       0#
+                bmi plotExtensionLocal                    ; CF97= 30 23       0#
                 asl a                        ; CF99= 0A          .
-                bpl LCFD7                    ; CF9A= 10 3B       .;
+                bpl plotType0to63                    ; CF9A= 10 3B       .;
                 and #$F0                     ; CF9C= 29 F0       )p
                 asl a                        ; CF9E= 0A          .
-                beq LCFE7                    ; CF9F= F0 46       pF
+                beq plotPointAndMove                    ; CF9F= F0 46       pF
                 eor #$40                     ; CFA1= 49 40       I@
                 beq LCFB9                    ; CFA3= F0 14       p.
                 pha                          ; CFA5= 48          H
-                jsr LCFED                    ; CFA6= 20 ED CF     mO
+                jsr copyPlotParametersToGraphicsCursorPixelPosition                    ; CFA6= 20 ED CF     mO
                 pla                          ; CFA9= 68          h
                 eor #$60                     ; CFAA= 49 60       I`
                 beq LCFBF                    ; CFAC= F0 11       p.
                 cmp #$40                     ; CFAE= C9 40       I@
-                bne LCFBC                    ; CFB0= D0 0A       P.
+                bne plotExtensionLocal                    ; CFB0= D0 0A       P.
                 lda #$02                     ; CFB2= A9 02       ).
                 sta $DA                      ; CFB4= 85 DA       .Z
                 jmp LD41D                    ; CFB6= 4C 1D D4    L.T
@@ -6565,14 +6665,68 @@ LCF91:
 LCFB9:
                 jmp LD500                    ; CFB9= 4C 00 D5    L.U
 
-LCFBC:
+plotExtensionLocal:
                 jmp vduPlotExtension                    ; CFBC= 4C 37 C9    L7I
 
 LCFBF:
                 sta $DA                      ; CFBF= 85 DA       .Z
                 jmp LD3D6                    ; CFC1= 4C D6 D3    LVS
 
-LCFC4:
+; ***************************************************************************************
+;
+; Set graphics colour and GCOL mode bytes
+;
+; When writing graphics pixels to the screen, two bytes are used to adjust the byte to write
+; based on the current colour and GCOL mode.
+; This routine sets these two bytes .vduGraphicsColourByteOR and .vduGraphicsColourByteEOR
+;
+; GCOL Mode
+; ---------
+; 0 = Normal Mode: Sets the pixel to the current colour
+; 1 =     OR Mode: Sets the pixel to the current colour  OR-ed with the colour on screen
+; 2 =    AND Mode: Sets the pixel to the current colour AND-ed with the colour on screen
+; 3 =    EOR Mode: Sets the pixel to the current colour EOR-ed with the colour on screen
+; 4 = Invert Mode: Inverts the colour already on screen
+;
+; Suppose 'C' is the byte that when written to the screen sets each pixel of the byte to
+; the current graphics colour.
+;
+; Then the two bytes are set as follows:
+;       ------------------------------------------------------------------------
+;       0=Normal Mode  | .vduGraphicsColourByteOR  = (C OR $FF) EOR $00 = $FF
+;                      | .vduGraphicsColourByteEOR = (C OR $00) EOR $FF = C EOR $FF
+;       ------------------------------------------------------------------------
+;       1=OR Mode      | .vduGraphicsColourByteOR  = (C OR $00) EOR $00 = C
+;                      | .vduGraphicsColourByteEOR = (C OR $FF) EOR $FF = 0
+;       ------------------------------------------------------------------------
+;       2=AND Mode     | .vduGraphicsColourByteOR  = (C OR $00) EOR $FF = C EOR $FF
+;                      | .vduGraphicsColourByteEOR = (C OR $00) EOR $FF = C EOR $FF
+;       ------------------------------------------------------------------------
+;       3=EOR Mode     | .vduGraphicsColourByteOR  = (C OR $FF) EOR $FF = 0
+;                      | .vduGraphicsColourByteEOR = (C OR $00) EOR $00 = C
+;       ------------------------------------------------------------------------
+;       4=Invert Mode  | .vduGraphicsColourByteOR  = (C OR $FF) EOR $FF = 0
+;                      | .vduGraphicsColourByteEOR = (C OR $FF) EOR $00 = $FF
+;       ------------------------------------------------------------------------
+;
+; When writing a pixel, start with a byte 'B', just the bits required to set one pixel to
+; white. Then the pixel is written like so:
+;
+;            temp = (B AND .vduGraphicsColourByteOR) OR (current screen byte)
+; new screen byte = (.vduGraphicsColourByteEOR AND B) EOR temp
+;
+; [A quirk: This routine is called with Y=5 for a relative move PLOT operation, but as
+;           there's nothing to draw, the results are unused in this case.]
+;
+; On Entry:
+;       X = colour byte to set
+;       Y = GCOL Mode (0=Normal, 1=OR, 2=AND, 3=EOR, 4=Invert)
+;
+; On Exit:
+;       .vduGraphicsColourByteOR / EOR hold the appropriate mask values
+;
+; ***************************************************************************************
+setGraphicsColourMaskXY:
                 txa                          ; CFC4= 8A          .
                 ora gcolPlotOptionsTable,y                  ; CFC5= 19 D7 C3    .WC
                 eor gcolPlotOptionsTable + 1,y                  ; CFC8= 59 D8 C3    YXC
@@ -6582,35 +6736,64 @@ LCFC4:
                 eor gcolPlotOptionsTable + 4,y                  ; CFD1= 59 DB C3    Y[C
                 sta $DF                      ; CFD4= 85 DF       ._
                 rts                          ; CFD6= 60          `
-
-LCFD7:
+; ***************************************************************************************
+; Continue processing of a PLOT command, where the plot type is in the range 0-63
+plotType0to63:
                 asl a                        ; CFD7= 0A          .
-                bmi LCFBC                    ; CFD8= 30 E2       0b
+                bmi plotExtensionLocal                    ; CFD8= 30 E2       0b
                 asl a                        ; CFDA= 0A          .
                 asl a                        ; CFDB= 0A          .
                 bpl LCFE1                    ; CFDC= 10 03       ..
-                jsr LCFFC                    ; CFDE= 20 FC CF     |O
+                jsr plotPoint                    ; CFDE= 20 FC CF     |O
 LCFE1:
                 jsr plotLine                    ; CFE1= 20 FE D0     ~P
-                jmp LCFEA                    ; CFE4= 4C EA CF    LjO
+                jmp plotMoveGraphicsCursorInAbsolutePixels                    ; CFE4= 4C EA CF    LjO
 
-LCFE7:
-                jsr LCFFC                    ; CFE7= 20 FC CF     |O
-LCFEA:
+; ***************************************************************************************
+; Plot a single point and move the graphics cursor position
+plotPointAndMove:
+                jsr plotPoint                    ; CFE7= 20 FC CF     |O
+; ***************************************************************************************
+; Move the current graphics cursor position, to new absolute pixel coordinates given by
+; the vdu25Parameters.
+plotMoveGraphicsCursorInAbsolutePixels:
                 jsr LCD1E                    ; CFEA= 20 1E CD     .M
-LCFED:
+copyPlotParametersToGraphicsCursorPixelPosition:
                 ldy #$24                     ; CFED= A0 24        $
-LCFEF:
+copyParameterPointToDestinationY:
                 ldx #$20                     ; CFEF= A2 20       "
                 jmp copyFourBytesWithinVDUVariables                    ; CFF1= 4C A1 D3    L!S
 
-LCFF4:
+; ***************************************************************************************
+;
+; Plot one pixel of a character
+;
+; See Characters.png
+; When drawing a character at the graphics cursor, this draws an individual pixel
+; of that character. It uses the current graphics cursor position as the position to plot.
+;
+; Each pixel is tested to see if it's within the bounds of the current graphics window,
+; so characters can be partially drawn.
+; ***************************************************************************************
+plotAPixelInACharacter:
                 ldx #$24                     ; CFF4= A2 24       "$
                 jsr checkPointXInBoundsAndSetScreenAddresses                    ; CFF6= 20 75 D7     uW
                 beq LD001                    ; CFF9= F0 06       p.
                 rts                          ; CFFB= 60          `
 
-LCFFC:
+; ***************************************************************************************
+;
+; Plots a single point
+;
+; This checks the point against the graphics window, gets the screen address details, then
+; renders the pixel by writing to the screen address, applying the colour masks and plot type.
+;
+; On Entry:
+;       X holds the offset into the VDU variables for four bytes holding the position to plot
+;       at.
+;
+; ***************************************************************************************
+plotPoint:
                 jsr checkParameterInBoundsAndSetScreenAddresses                    ; CFFC= 20 73 D7     sW
                 bne LD014                    ; CFFF= D0 13       P.
 LD001:
@@ -6627,7 +6810,14 @@ LD004:
 LD014:
                 rts                          ; D014= 60          `
 
-LD015:
+; ***************************************************************************************
+;
+; Plots a filled whole byte (as part of a lateral fill)
+;
+; On Entry:
+;       Y is the vertical offset within a character cell (0-7)
+; ***************************************************************************************
+plotByte:
                 lda ($D4),y                  ; D015= B1 D4       1T
                 ora $DE                      ; D017= 05 DE       .^
                 eor $DF                      ; D019= 45 DF       E_
@@ -6640,25 +6830,52 @@ LD02A_300:
                 rts
 .endif
 
-LD01E:
+; ***************************************************************************************
+;
+; Check that the graphics cursor is within the graphics window
+;
+; On Exit:
+;   .vduTempStoreDA is zero if the point is within the graphics window, or the four low bits
+;                indicate which regions failed:
+;
+;       %0000   success (point is within window)
+;       %0001   graphics cursor X is left of  the left   edge of the graphics window
+;       %0010   graphics cursor X is right of the right  edge of the graphics window
+;       %0100   graphics cursor Y is below    the bottom edge of the graphics window
+;       %1000   graphics cursor Y is above    the top    edge of the graphics window
+;
+; ***************************************************************************************
+checkGraphicsCursorIsWithinGraphicsWindow:
                 ldx #$24                     ; D01E= A2 24       "$
-LD020:
+checkPointXIsWithinGraphicsWindow:
                 ldy #$00                     ; D020= A0 00        .
                 sty $D8                      ; D022= 84 D8       .X
                 ldy #$02                     ; D024= A0 02        .
-                jsr LD039                    ; D026= 20 39 D0     9P
+                jsr checkPointIsWithinWindowHorizontalOrVertical                    ; D026= 20 39 D0     9P
                 asl $D8                      ; D029= 06 D8       .X
                 asl $D8                      ; D02B= 06 D8       .X
                 dex                          ; D02D= CA          J
                 dex                          ; D02E= CA          J
                 ldy #$00                     ; D02F= A0 00        .
-                jsr LD039                    ; D031= 20 39 D0     9P
+                jsr checkPointIsWithinWindowHorizontalOrVertical                    ; D031= 20 39 D0     9P
                 inx                          ; D034= E8          h
                 inx                          ; D035= E8          h
                 lda $D8                      ; D036= A5 D8       %X
                 rts                          ; D038= 60          `
 
-LD039:
+; ***************************************************************************************
+;
+; Check coordinate of a point is in the window bounds (horizontal or vertical)
+;
+; On Entry:
+;       X is the offset to the coordinate to check minus two bytes
+;       Y is the offset to the second variable to check (0 for horizontal or 2 for vertical)
+; On Exit:
+;       .vduTempStoreDA is the error code (0 = no error, 1 = first check failed, 2 = second check
+;       failed)
+;       Zero flag set if no error
+; ***************************************************************************************
+checkPointIsWithinWindowHorizontalOrVertical:
                 lda vduGraphicsWindowPixelsBottomLow,x                  ; D039= BD 02 03    =..
                 cmp vduGraphicsWindowPixelsLeftLow,y                  ; D03C= D9 00 03    Y..
                 lda vduGraphicsWindowPixelsBottomHigh,x                  ; D03F= BD 03 03    =..
@@ -6675,10 +6892,31 @@ LD057:
 LD059:
                 rts                          ; D059= 60          `
 
-LD05A:
+; ***************************************************************************************
+;
+; Convert external absolute coordinates to pixels
+;
+; Convert external, absolute coordinates to pixels (horizontal and vertical)
+;
+; On Entry:
+;       X is the offset in vdu variables to the coordinate to convert
+;
+; ***************************************************************************************
+plotConvertExternalAbsoluteCoordinatesToPixels:
                 lda #$FF                     ; D05A= A9 FF       ).
                 bne LD061                    ; D05C= D0 03       P.
-LD05E:
+
+; ***************************************************************************************
+;
+; Convert external relative coordinates to pixels
+;
+; Convert pair of external coordinates to pixels (horizontal and vertical)
+;
+; On Entry:
+;       X is the offset in vdu variables to the coordinate to convert
+;
+; ***************************************************************************************
+plotConvertExternalRelativeCoordinatesToPixels:
                 lda $031F                    ; D05E= AD 1F 03    -..
 LD061:
                 sta $D8                      ; D061= 85 D8       .X
@@ -6863,7 +7101,7 @@ LD14E:
                 asl a                        ; D168= 0A          .
                 sta $D9                      ; D169= 85 D9       .Y
                 ldx #$2C                     ; D16B= A2 2C       ",
-                jsr LD020                    ; D16D= 20 20 D0      P
+                jsr checkPointXIsWithinGraphicsWindow                    ; D16D= 20 20 D0      P
                 sta $DA                      ; D170= 85 DA       .Z
                 beq LD17A                    ; D172= F0 06       p.
                 lda #$40                     ; D174= A9 40       )@
@@ -6871,7 +7109,7 @@ LD14E:
                 sta $D9                      ; D178= 85 D9       .Y
 LD17A:
                 ldx $DB                      ; D17A= A6 DB       &[
-                jsr LD020                    ; D17C= 20 20 D0      P
+                jsr checkPointXIsWithinGraphicsWindow                    ; D17C= 20 20 D0      P
                 bit $DA                      ; D17F= 24 DA       $Z
                 beq LD184                    ; D181= F0 01       p.
                 rts                          ; D183= 60          `
@@ -7364,7 +7602,7 @@ LD3F0:
                 bpl LD40E                    ; D405= 10 07       ..
 LD407:
                 tax                          ; D407= AA          *
-                jsr LD015                    ; D408= 20 15 D0     .P
+                jsr plotByte                    ; D408= 20 15 D0     .P
                 sec                          ; D40B= 38          8
                 bcs LD3F0                    ; D40C= B0 E2       0b
 LD40E:
@@ -7404,7 +7642,7 @@ LD430:
                 bpl LD454                    ; D44B= 10 07       ..
 LD44D:
                 tax                          ; D44D= AA          *
-                jsr LD015                    ; D44E= 20 15 D0     .P
+                jsr plotByte                    ; D44E= 20 15 D0     .P
                 sec                          ; D451= 38          8
                 bcs LD430                    ; D452= B0 DC       0\
 LD454:
@@ -7413,7 +7651,7 @@ LD457:
                 ldy #$04                     ; D457= A0 04        .
                 jsr LD4C2                    ; D459= 20 C2 D4     BT
 LD45C:
-                jsr LCFEA                    ; D45C= 20 EA CF     jO
+                jsr plotMoveGraphicsCursorInAbsolutePixels                    ; D45C= 20 EA CF     jO
                 jmp convertPixelGraphicsCoordinatesToExternal                    ; D45F= 4C C9 D0    LIP
 
 LD462:
@@ -7547,7 +7785,7 @@ LD500:
                 ldx #$28                     ; D521= A2 28       "(
                 jsr lineInitialisation                    ; D523= 20 70 D3     pS
                 ldy #$2E                     ; D526= A0 2E        .
-                jsr LCFEF                    ; D528= 20 EF CF     oO
+                jsr copyParameterPointToDestinationY                    ; D528= 20 EF CF     oO
                 jsr LCD1E                    ; D52B= 20 1E CD     .M
                 clc                          ; D52E= 18          .
                 jsr LD56E                    ; D52F= 20 6E D5     nU
@@ -7559,7 +7797,7 @@ LD500:
                 ldx #$3E                     ; D53E= A2 3E       ">
                 ldy #$20                     ; D540= A0 20
                 jsr copyEightBytesWithinVDUVariables                    ; D542= 20 93 D3     .S
-                jmp LCFEA                    ; D545= 4C EA CF    LjO
+                jmp plotMoveGraphicsCursorInAbsolutePixels                    ; D545= 4C EA CF    LjO
 
 LD548:
                 ldx #$20                     ; D548= A2 20       "
@@ -7594,7 +7832,7 @@ LD56E:
                 ldx #$33                     ; D57C= A2 33       "3
                 jsr lineInitialisation                    ; D57E= 20 70 D3     pS
                 ldy #$39                     ; D581= A0 39        9
-                jsr LCFEF                    ; D583= 20 EF CF     oO
+                jsr copyParameterPointToDestinationY                    ; D583= 20 EF CF     oO
                 sec                          ; D586= 38          8
                 lda $0322                    ; D587= AD 22 03    -".
                 sbc $0326                    ; D58A= ED 26 03    m&.
@@ -7638,7 +7876,7 @@ LD5D2:
                 lda vduGraphicsWindowPixelsLeftHigh,y                  ; D5D8= B9 01 03    9..
                 pha                          ; D5DB= 48          H
                 ldx $DD                      ; D5DC= A6 DD       &]
-                jsr LD020                    ; D5DE= 20 20 D0      P
+                jsr checkPointXIsWithinGraphicsWindow                    ; D5DE= 20 20 D0      P
                 beq LD5F0                    ; D5E1= F0 0D       p.
                 cmp #$02                     ; D5E3= C9 02       I.
                 bne LD624                    ; D5E5= D0 3D       P=
@@ -7649,7 +7887,7 @@ LD5D2:
 LD5F0:
                 jsr setScreenAddress                    ; D5F0= 20 7A D7     zW
                 ldx $DC                      ; D5F3= A6 DC       &\
-                jsr LD020                    ; D5F5= 20 20 D0      P
+                jsr checkPointXIsWithinGraphicsWindow                    ; D5F5= 20 20 D0      P
                 lsr a                        ; D5F8= 4A          J
                 bne LD624                    ; D5F9= D0 29       P)
                 bcc LD5FF                    ; D5FB= 90 02       ..
@@ -7717,7 +7955,7 @@ LD65A:
                 bcs LD663                    ; D65F= B0 02       0.
                 dec $D5                      ; D661= C6 D5       FU
 LD663:
-                jsr LD015                    ; D663= 20 15 D0     .P
+                jsr plotByte                    ; D663= 20 15 D0     .P
                 dex                          ; D666= CA          J
                 bne LD65A                    ; D667= D0 F1       Pq
 LD669:
@@ -7782,36 +8020,41 @@ LD6D7:
                 rts                          ; D6D7= 60          `
 
 LD6D8:
-                jsr LD6DE                    ; D6D8= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; D6D8= 20 DE D6     ^V
                 jsr vduChrEntryPoint         ; D6DB= 20 33 C4     3D
 
 ; Swap software cursor and screen data
+; - Only called when the cursor advances, not when it's just flashing...
+; - 
 ; ------------------------------------
-LD6DE:
-                php                          ; D6DE= 08          .
-                sei                          ; D6DF= 78          x
-                pha                          ; D6E0= 48          H
-                lda vduStatusByte                      ; D6E1= A5 D0       %P
-                and #$30                     ; D6E3= 29 30       )0
-                bne LD70E                    ; No cursor displayed, exit
-                lda vduNumberOfLogicalColoursMinusOne                    ; D6E7= AD 60 03    -`.
-                sta $D8                      ; D6EA= 85 D8       .X
-                lda vduTextCursorCRTCAddressHigh                    ; D6EC= AD 4B 03    -K.
-                eor #$80                     ; D6EF= 49 80       I.
-                sta vduTextCursorCRTCAddressHigh                    ; D6F1= 8D 4B 03    .K.
-                ldx #$00                     ; D6F4= A2 00       ".
-                ldy #$07                     ; D6F6= A0 07        .
-                sec                          ; D6F8= 38          8
+swapSoftwareCursorAndScreenData:
+                php                                     ; Push status to stack                      ; D6DE= 08          .
+                sei                                     ; Disable interupts                       ; D6DF= 78          x
+                pha                                     ; Push the accumulator     ; D6E0= 48          H
+                lda vduStatusByte                       ; Load the VDU status    ; D6E1= A5 D0       %P
+                and #$30                                ; Check Gfx cursor enabled and the 'reserved' bit, interesting...    ; D6E3= 29 30       )0
+                bne LD70E                               ; Exit if Gfx cursor or 'reserved' bit set    ; No cursor displayed, exit
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours in this mode                 ; D6E7= AD 60 03    -`.
+                sta $D8                                 ; Store in temp var D8 (could be write cursor?)                     ; D6EA= 85 D8       .X
+                lda vduTextCursorCRTCAddressHigh        ; Load the High address of the 'cursor' (what are we talking about here?)            ; D6EC= AD 4B 03    -K.
+                eor #$80                                ; XOR 80, leave all bits, but flip bit 7        ; D6EF= 49 80       I.
+                sta vduTextCursorCRTCAddressHigh        ; Save it back                               ; D6F1= 8D 4B 03    .K.
+                                                        ; Why flip bit 7
+                                                        ; If cursor was at 7C01, then high byte is 7C, this would change it to FC
+                                                        ; Hmm, lets carry on and see...          
+                ldx #$00                                ; X=0           ; D6F4= A2 00       ".
+                ldy #$07                                ; Y=7           ; D6F6= A0 07        .
+                sec                                     ; Set Carry     ; D6F8= 38          8
 LD6F9:
-                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D6F9= B1 D6       1V
-                pha                          ; D6FB= 48          H
-                lda $080C,x                  ; D6FC= BD 0C 08    =..
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D6FF= 91 D6       .V
-                pla                          ; D701= 68          h
-                sta $080C,x                  ; D702= 9D 0C 08    ...
-                inx                          ; D705= E8          h
-                tya                          ; D706= 98          .
-                adc #$07                     ; D707= 69 07       i.
+                lda (vduScreenAddressOfGraphicsCursorCellLow),y     ; Start by loading whatever is in line 8 of the current character?              ; D6F9= B1 D6       1V
+                pha                                     ; Push to stack     ; D6FB= 48          H
+                lda channel0PhaseCounter,x              ; Load whatever is in channel 0 Phase Counter     ; D6FC= BD 0C 08    =..
+                sta (vduScreenAddressOfGraphicsCursorCellLow),y     ; Store the ch0 phase counter into that character position?!               ; D6FF= 91 D6       .V
+                pla                                     ; Pull whatever character cell row was    ; D701= 68          h
+                sta channel0PhaseCounter,x              ; Store that in Sound Phase 0 var (I don't think this is used in Elk)    ; D702= 9D 0C 08    ...
+                inx                                     ; X++ (ie, =1)          ; D705= E8          h
+                tya                                     ; A=Y (ie, =7)       ; D706= 98          .
+                adc #$07                                ; Add 7 + carry (ie = 15 )            ; D707= 69 07       i.
                 tay                          ; D709= A8          (
                 lsr $D8                      ; D70A= 46 D8       FX
                 bne LD6F9                    ; D70C= D0 EB       Pk
@@ -7820,8 +8063,13 @@ LD70E:
                 plp                          ; D70F= 28          (
                 rts                          ; D710= 60          `
 
-osbyte87:
-                jsr LD6DE                    ; D711= 20 DE D6     ^V
+; ***************************************************************************************
+;
+; OSBYTE 135 - Read character at text cursor position
+;
+; ***************************************************************************************
+osbyte135EntryPoint:
+                jsr swapSoftwareCursorAndScreenData                    ; D711= 20 DE D6     ^V
                 ldy #$07                     ; D714= A0 07        .
 LD716:
                 sty $D8                      ; D716= 84 D8       .X
@@ -7880,7 +8128,7 @@ LD75E:
                 txa                          ; D768= 8A          .
                 bne LD746                    ; D769= D0 DB       P[
 LD76B:
-                jsr LD6DE                    ; D76B= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; D76B= 20 DE D6     ^V
                 ldy vduCurrentScreenMODE                    ; D76E= AC 55 03    ,U.
                 tax                          ; D771= AA          *
                 rts                          ; D772= 60          `
@@ -7908,7 +8156,7 @@ checkParameterInBoundsAndSetScreenAddresses:
 ;       Z is clear (i.e. BNE will branch) if coordinates are outside the graphics area
 ; ***************************************************************************************
 checkPointXInBoundsAndSetScreenAddresses:
-                jsr LD020                    ; D775= 20 20 D0      P
+                jsr checkPointXIsWithinGraphicsWindow                    ; D775= 20 20 D0      P
                 bne LD7E4                    ; D778= D0 6A       Pj
 setScreenAddress:
                 lda vduGraphicsWindowPixelsBottomLow,x                  ; D77A= BD 02 03    =..
@@ -7986,7 +8234,7 @@ LD7E5:
                 bne LD832                    ; D7EB= D0 45       PE
                 bit vduStatusByte                      ; D7ED= 24 D0       $P
                 bne LD832                    ; D7EF= D0 41       PA
-                jsr LD6DE                    ; D7F1= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; D7F1= 20 DE D6     ^V
                 bvs LD808                    ; D7F4= 70 12       p.
                 ldx #$18                     ; D7F6= A2 18       ".
                 ldy #$64                     ; D7F8= A0 64        d
@@ -8003,19 +8251,19 @@ LD808:
                 jsr vduChrEntryPoint         ; D810= 20 33 C4     3D
                 lda #$40                     ; D813= A9 40       )@
                 jsr LC523                    ; D815= 20 23 C5     #E
-                jmp LD6DE                    ; D818= 4C DE D6    L^V
+                jmp swapSoftwareCursorAndScreenData                    ; D818= 4C DE D6    L^V
 
 LD81B:
                 lda #$20                     ; D81B= A9 20       )
                 bit vduStatusByte                      ; D81D= 24 D0       $P
                 bvc LD7E2                    ; D81F= 50 C1       PA
                 bne LD7E2                    ; D821= D0 BF       P?
-                jsr osbyte87                    ; D823= 20 11 D7     .W
+                jsr osbyte135EntryPoint                    ; D823= 20 11 D7     .W
                 beq LD833                    ; D826= F0 0B       p.
                 pha                          ; D828= 48          H
-                jsr LD6DE                    ; D829= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; D829= 20 DE D6     ^V
                 jsr vdu9EntryPoint           ; D82C= 20 E2 C5     bE
-                jsr LD6DE                    ; D82F= 20 DE D6     ^V
+                jsr swapSoftwareCursorAndScreenData                    ; D82F= 20 DE D6     ^V
 LD832:
                 pla                          ; D832= 68          h
 LD833:
@@ -8257,7 +8505,13 @@ LD912:
                 inc lastResetType                    ; D927= EE 8D 02    n..
 LD92A:
                 inc lastResetType                    ; D92A= EE 8D 02    n..
+; TODO: THIS IF BLOCK SHOULD BE REMOVED ** 
+; JUST FOR TESTING PURPOSES TO MAKE IT EASIER TO FIX MODE6 ISSUES!!
+.if version==100 && subVersion==7
+                lda #$FE                    ; TODO: TO BE REMOVED, IT SETS MODE 6 
+.else                
                 lda #$FF                     ; D92D= A9 FF       ).
+.endif
                 sta startUpOptions                    ; D92F= 8D 8F 02    ...
                 ldx #$90                     ; D932= A2 90       ".
 LD934:
@@ -8285,10 +8539,10 @@ LD94D:
                 bne LD94D
                 lda #$07                     ; D956= A9 07       ).
                 sta $ED                      ; D958= 85 ED       .m
-                sty $FC                      ; D95A= 84 FC       .|
+                sty interruptAccumulator                      ; D95A= 84 FC       .|
                 cli                          ; D95C= 58          X
                 sei                          ; D95D= 78          x
-                lda $FC                      ; D95E= A5 FC       %|
+                lda interruptAccumulator                      ; D95E= A5 FC       %|
                 beq LD965                    ; D960= F0 03       p.
                 jsr LEEC2                    ; D962= 20 C2 EE     Bn
 LD965:
@@ -8449,9 +8703,9 @@ LDA2A_300:
 LDA31_300:
 .endif
                 
-                jsr LD6DE                    ; Store software cursor
+                jsr swapSoftwareCursorAndScreenData                    ; Store software cursor
                 jsr LCED5                    ; Copy Electron Acorn bitmap to cursor store
-                jsr LD6DE                    ; Restore software cursor to draw the Acorn bitmap
+                jsr swapSoftwareCursorAndScreenData                    ; Restore software cursor to draw the Acorn bitmap
 LDA4D:
                 ldy #$13                     ; Print Newlines
                 jsr LDC34
@@ -8563,7 +8817,7 @@ LDAE2:
 ; IRQ Handler
 ; ===========
 irqEntryPoint:
-                sta $FC                      ; Save A in IRQ store
+                sta interruptAccumulator                      ; Save A in IRQ store
                 pla                          ; Get flags from stack
                 pha
                 and #$10                     ; If BRK jump to BRK handler
@@ -8609,7 +8863,7 @@ LDB06:
                 jsr LDB00
                 pla                          ; Restore X and A, enable IRQs
                 tax
-                lda $FC
+                lda interruptAccumulator
                 cli
                 jmp (vectorBRKV)                  ; Pass on to vectorBRKV error handler
 
@@ -8624,9 +8878,18 @@ LDB3C:
                 jsr OSNEWL                   ; DB41= 20 E7 FF     g.
                 jmp LDA83                    ; DB44= 4C 83 DA    L.Z
 
+; ***************************************************************************************
+;
+; IRQ1 default handler
+;
+; When a hardware device generates an IRQ, this IRQ1 handler is executed (as the default
+; handler, see .irqEntryPoint). After saving registers and a suitable return address on
+; the stack, we check three hardware devices in turn, to see what needs attention:
+;
+; ***************************************************************************************
 irq1EntryPoint:
                 cld
-                lda $FC                      ; restore original A
+                lda interruptAccumulator     ; restore original A
                 pha                          ; save original A
                 txa
                 pha                          ; save original X
@@ -8665,7 +8928,7 @@ LDB6F:
                 pla
                 tax
                 pla                          ; Restore A and A store
-                sta $FC
+                sta interruptAccumulator
                 jmp (vectorIRQ2V)                  ; Pass on to vectorIRQ2V
 
 LDB82:
@@ -8674,9 +8937,9 @@ LDB82:
                 pla
                 tax
                 pla                          ; Restore A and IRQ store
-                sta $FC
+                sta interruptAccumulator
 LDB89:
-                lda $FC                      ; Restore A from IRQ store
+                lda interruptAccumulator                      ; Restore A from IRQ store
                 rti                          ; Return from IRQ
 
 ;-------------------------------------------------------------------------
@@ -8687,29 +8950,29 @@ handleRTCOrDisplayEndIRQ:
                 txa                          ; A=effective IRQ flags
                 ldy #$20                     ; Y=clear RTC IRQ value
                 and #$08                     ; isolate RTC bit
-                bne LDBC5                    ; taken if RTC IRQ
+                bne LDBC5                    ; taken if RTC IRQ (Write to clear Int reg with Y)
                 txa                          ; A=effective IRQ flags
                 and #$04                     ; isolate Display End bit
                 beq LDB6F                    ; taken if not display end IRQ
 ; handle display end IRQ
-                jsr LC98E
-                lda $0251
+                jsr renderCursorMAYBE 
+                lda videoULAFlashingColourIntervalCount
                 beq LDBBB
-                dec $0251
+                dec videoULAFlashingColourIntervalCount
                 bne LDBBB
-                ldx $0252
-                lda $0248
+                ldx videoULAFirstFlashingColourInterval
+                lda videoULAVideoControlRegisterCopy
                 beq LDBB0
-                ldx $0253
+                ldx videoULASecondFlashingColourInterval
 LDBB0:
                 eor #$07
-                sta $0248
-                stx $0251
+                sta videoULAVideoControlRegisterCopy
+                stx videoULAFlashingColourIntervalCount
                 jsr LC8A3
 LDBBB:
                 ldy #$04
                 jsr LE202
-                dec $0240
+                dec verticalSyncCounter
                 ldy #$10                     ; Y=clear Display End IRQ value
 LDBC5:
                 sty intClearAndPagingRegister
@@ -9926,7 +10189,7 @@ LE3B1:
                 .word osbyte84 ; &84 - Read top of user memory
                 .word osbyte85 ; &85 - Read top of user memory for specified MODE
                 .word osbyte86 ; &86 - Read text cursor position [MasRef D.2-41]              
-                .word osbyte87 ; &87 - Read screen mode and character at [MasRef D.2-42]      
+                .word osbyte135EntryPoint ; &87 - Read screen mode and character at [MasRef D.2-42]      
                 .word osbyte88 ; &88 - Execute user code [MasRef D.2-42]                      
                 .word osbyte89 ; &89 - Switch cassette motor relay [MasRef D.2-42]            
                 .word osbyte8A ; &8A - Insert character code into buffer [MasRef D.2-43]      
@@ -10023,20 +10286,20 @@ osbyte09:
                 iny                          ; E49C= C8          H
                 clc                          ; E49D= 18          .
 osbyte0A:
-                lda $0252,y                  ; E49E= B9 52 02    9R.
+                lda videoULAFirstFlashingColourInterval,y                  ; E49E= B9 52 02    9R.
                 pha                          ; E4A1= 48          H
                 txa                          ; E4A2= 8A          .
-                sta $0252,y                  ; E4A3= 99 52 02    .R.
+                sta videoULAFirstFlashingColourInterval,y                  ; E4A3= 99 52 02    .R.
                 pla                          ; E4A6= 68          h
                 tay                          ; E4A7= A8          (
-                lda $0251                    ; E4A8= AD 51 02    -Q.
+                lda videoULAFlashingColourIntervalCount                    ; E4A8= AD 51 02    -Q.
                 bne LE4C0                    ; E4AB= D0 13       P.
-                stx $0251                    ; E4AD= 8E 51 02    .Q.
+                stx videoULAFlashingColourIntervalCount                    ; E4AD= 8E 51 02    .Q.
                 lda #$00                     ; E4B0= A9 00       ).
                 bcc LE4B6                    ; E4B2= 90 02       ..
                 lda #$07                     ; E4B4= A9 07       ).
 LE4B6:
-                sta $0248                    ; E4B6= 8D 48 02    .H.
+                sta videoULAVideoControlRegisterCopy                    ; E4B6= 8D 48 02    .H.
                 tya                          ; E4B9= 98          .
                 pha                          ; E4BA= 48          H
                 jsr LC8A3                    ; E4BB= 20 A3 C8     #H
@@ -10670,11 +10933,11 @@ LE7A7:
                 jmp LF094                    ; E7AB= 4C 94 F0    L.p
 
 osbyte13:
-                lda $0240                    ; E7AE= AD 40 02    -@.
+                lda verticalSyncCounter                    ; E7AE= AD 40 02    -@.
 LE7B1:
                 cli                          ; E7B1= 58          X
                 sei                          ; E7B2= 78          x
-                cmp $0240                    ; E7B3= CD 40 02    M@.
+                cmp verticalSyncCounter                    ; E7B3= CD 40 02    M@.
                 beq LE7B1                    ; E7B6= F0 F9       py
 osbyteA0:
                 ldy vduGraphicsWindowPixelsLeftHigh,x                  ; E7B8= BC 01 03    <..
@@ -11442,25 +11705,25 @@ LEC42_300:
                 pla
                 pha
                 jsr LECF8
-                sta $fc
+                sta interruptAccumulator
                 lda #8
                 jsr selectROMA
                 php
                 jsr LED5A_300
                 plp
-                and $fc
+                and interruptAccumulator
                 beq LEC59_300
 LEC57_300:
                 lda #$80
 LEC59_300:
-                sta $fc
+                sta interruptAccumulator
                 pla
-                ora $fc
+                ora interruptAccumulator
                 tax
                 pla
                 jsr selectROMA
                 pla
-                ldy $fc
+                ldy interruptAccumulator
 LEC66_300:
                 rts
 
@@ -11472,24 +11735,24 @@ LEC66_300:
                 and #$3F                     ; extract key number bits 0-4
                 pha                          ; save key number bits 0-4
                 jsr LECF8                    ; Get address and map of key
-                sta $FC                      ; Store bitmask in &FC
+                sta interruptAccumulator                      ; Store bitmask in &FC
                 ldx $F4                      ; X=current ROM
                 lda #$08                     ; Page in keyboard in ROM 8
                 jsr selectROMA
                 php                          ; Read internal keypress from ROM
                 jsr readKeypressFromROM
                 plp
-                and $FC                      ; Mask with row bitmask to get b0-b3 set
+                and interruptAccumulator                      ; Mask with row bitmask to get b0-b3 set
                 beq LEC3C                    ; Nothing set, skip forward
                 lda #$80                     ; Bit set, convert it to &80
 LEC3C:
-                sta $FC                      ; Store &00/&80 keypress state
+                sta interruptAccumulator                      ; Store &00/&80 keypress state
                 jsr selectROMX                    ; Restore current ROM from X
                 pla                          ; Get original keypress back
-                ora $FC                      ; OR with &00/&80 keypress state, return in X
+                ora interruptAccumulator                      ; OR with &00/&80 keypress state, return in X
                 tax
                 pla                          ; Restore A
-                ldy $FC                      ; Return keypress &00/&80 in Y
+                ldy interruptAccumulator                      ; Return keypress &00/&80 in Y
 LEC48:
                 rts
 .endif
@@ -12139,9 +12402,9 @@ osbyte9A:
                 php                          ; EEE8= 08          .
                 sei                          ; EEE9= 78          x
                 ldx #$00                     ; EEEA= A2 00       ".
-                stx $0248                    ; EEEC= 8E 48 02    .H.
-                lda $0253                    ; EEEF= AD 53 02    -S.
-                sta $0251                    ; EEF2= 8D 51 02    .Q.
+                stx videoULAVideoControlRegisterCopy                    ; EEEC= 8E 48 02    .H.
+                lda videoULASecondFlashingColourInterval                    ; EEEF= AD 53 02    -S.
+                sta videoULAFlashingColourIntervalCount                    ; EEF2= 8D 51 02    .Q.
                 jsr LC8A3                    ; EEF5= 20 A3 C8     #H
                 plp                          ; EEF8= 28          (
                 rts                          ; EEF9= 60          `
@@ -12430,7 +12693,7 @@ LF049:
                 inx                          ; F049= E8          h
                 lsr a                        ; F04A= 4A          J
                 bcc LF049                    ; F04B= 90 FC       .|
-                stx $FC                      ; F04D= 86 FC       .|
+                stx interruptAccumulator                      ; F04D= 86 FC       .|
                 lda $FA                      ; F04F= A5 FA       %z
                 eor #$FF                     ; F051= 49 FF       I.
                 beq LF062                    ; F053= F0 0D       p.
@@ -12442,7 +12705,7 @@ LF057:
                 txa                          ; F05B= 8A          .
                 asl a                        ; F05C= 0A          .
                 asl a                        ; F05D= 0A          .
-                ora $FC                      ; F05E= 05 FC       .|
+                ora interruptAccumulator                      ; F05E= 05 FC       .|
                 tax                          ; F060= AA          *
                 rts                          ; F061= 60          `
 
@@ -13740,10 +14003,10 @@ LF7F7:
 LF7F9:
                 ldx #$05                     ; F7F9= A2 05       ".
 LF7FB:
-                sta $0240                    ; F7FB= 8D 40 02    .@.
+                sta verticalSyncCounter                    ; F7FB= 8D 40 02    .@.
 LF7FE:
                 jsr LF905                    ; F7FE= 20 05 F9     .y
-                bit $0240                    ; F801= 2C 40 02    ,@.
+                bit verticalSyncCounter                    ; F801= 2C 40 02    ,@.
                 bpl LF7FE                    ; F804= 10 F8       .x
                 dex                          ; F806= CA          J
                 bne LF7FB                    ; F807= D0 F2       Pr
