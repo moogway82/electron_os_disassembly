@@ -823,22 +823,31 @@ vduCurrentPlotByteMask                     = $D1       ; bits to write a pixel w
 vduTextColourByteOR                        = $D2       ; } bytes to implement current foreground
 vduTextColourByteEOR                       = $D3       ; } and background text colours
 
-vduGraphicsColourByteOR                    = $D4       ; } bytes to implement current GCOL
-vduGraphicsColourByteEOR                   = $D5       ; } mode and graphics colours
+;vduGraphicsColourByteOR                    = $D4       ; } bytes to implement current GCOL
+vduScreenAddressOfGraphicsCursorCellLow     = $D4       ; } address of the top of the cell
+;vduGraphicsColourByteEOR                   = $D5       ; } mode and graphics colours
+vduScreenAddressOfGraphicsCursorCellHigh    = $D5       ; } on screen containing the graphics
+                                                        ; } cursor position
 
-vduScreenAddressOfGraphicsCursorCellLow    = $D6       ; } address of the top of the cell
-vduScreenAddressOfGraphicsCursorCellHigh   = $D7       ; } on screen containing the graphics
-                                                       ; } cursor position
+;vduScreenAddressOfGraphicsCursorCellLow    = $D6      
+;vduScreenAddressOfGraphicsCursorCellHigh   = $D7       ; } on screen containing the graphics
+                                                        ; } cursor position
 
-vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
-vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
+;vduWriteCursorScreenAddressLow             = $D8       ; } address of the top of the cell
+vduWriteCursorScreenAddressLow              = $D6      ; } address of the top of the cell
+;vduWriteCursorScreenAddressHigh            = $D9       ; } on screen for the write cursor
+vduWriteCursorScreenAddressHigh             = $D7      ; } on screen for the write cursor
 
+vduTempStoreD8                              = $D8      ; }
+vduTempStoreD9                              = $D9      ;}
 vduTempStoreDA                             = $DA       ; }
 vduTempStoreDB                             = $DB       ; }
 vduTempStoreDC                             = $DC       ; } store for temporary values,
 vduTempStoreDD                             = $DD       ; } used in multiple VDU related
-vduTempStoreDE                             = $DE       ; } functions.
-vduTempStoreDF                             = $DF       ; }
+;vduTempStoreDE                             = $DE       ; } functions.
+vduGraphicsColourByteOR                    = $DE       ; } functions.
+;vduTempStoreDF                             = $DF       ; }
+vduGraphicsColourByteEOR                   = $DF       ; }
 
 vduMultiplicationTableLow                  = $E0       ; stores which multiplication table
 vduMultiplicationTableHigh                 = $E1       ; to use
@@ -1551,8 +1560,14 @@ unused347                                  = $0347     ; [unused]
 unused348                                  = $0348     ; [unused]
 unused349                                  = $0349     ; [unused]
 
-vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
-vduTextCursorCRTCAddressHigh               = $034B     ;
+; These appear to NOT be what it says in EAUG which is just saying what the Beeb has
+; There is no CRTC on the Elk and I think they repurposed this for the sofware cursor
+;
+;vduTextCursorCRTCAddressLow                = $034A     ; CRTC address of the cursor
+;vduTextCursorCRTCAddressHigh               = $034B     ;
+vduTextCursorFlashCounter                   = $034A     ; The Software Flash Counter
+vduTextCursorFlashCycleStatus               = $034B     ; Current state of Flash Cycle 40=Shown 00=Hidden
+
 
 vduTextWindowWidthInBytesLow               = $034C     ;
 vduTextWindowWidthInBytesHigh              = $034D     ;
@@ -1784,7 +1799,10 @@ channel3Volume                             = $080B     ; } -15     $3F
                                                         ; }  -1     $CF
                                                         ; }   0     $C7
 
-channel0PhaseCounter                       = $080C     ; }
+; These Sound Envelope vars are recycled on the Elk as there is no Sound chip on it
+
+;channel0PhaseCounter                      = $080C     ; }
+screenDataAtCursorPos1                     = $080C     ; Temporary store for screen pixels at current line text cursor is at
 channel1PhaseCounter                       = $080D     ; }
 channel2PhaseCounter                       = $080E     ; } phase counter for current amplitude envelope (which phase of 'ADSR' is current)
 channel3PhaseCounter                       = $080F     ; }
@@ -4448,11 +4466,11 @@ vdu8EntryPoint:
                 bmi LC56C                    ; C54C= 30 1E       0.
                 
                 
-                lda vduScreenAddressOfGraphicsCursorCellLow                      ; C54E= A5 D6       %V
+                lda vduWriteCursorScreenAddressLow      ; This is "LDA vduTextCursorCRTCAddressLow" on Beeb MOS                ; C54E= A5 D6       %V
                 sec                          ; C550= 38          8
                 sbc vduBytesPerCharacter                    ; C551= ED 4F 03    mO.
                 tax                          ; C554= AA          *
-                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; C555= A5 D7       %W
+                lda vduWriteCursorScreenAddressHigh                      ; C555= A5 D7       %W
                 sbc #$00                     ; C557= E9 00       i.
                 cmp vduStartScreenAddressHighByte                    ; C559= CD 4E 03    MN.
                 
@@ -4462,12 +4480,12 @@ vdu8EntryPoint:
                 adc vduScreenSizeHighByte                    ; C55E= 6D 54 03    mT.
 
 LC561:
-                stx vduScreenAddressOfGraphicsCursorCellLow                      ; C561= 86 D6       .V
+                stx vduWriteCursorScreenAddressLow                      ; C561= 86 D6       .V
                 bpl LC569                    ; C563= 10 04       ..
                 sec                          ; C565= 38          8
                 sbc vduScreenSizeHighByte                    ; C566= ED 54 03    mT.
 LC569:
-                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; C569= 85 D7       .W
+                sta vduWriteCursorScreenAddressHigh                      ; C569= 85 D7       .W
                 rts                          ; C56B= 60          `
 
 LC56C:
@@ -4554,10 +4572,10 @@ vdu9EntryPoint:
                 cpx vduTextWindowRight                    ; C5EB= EC 0A 03    l..
                 bcs moveTextCursorToLeftEdgeAndDown                    ; C5EE= B0 10       0.
                 inc vduTextCursorXPosition                    ; C5F0= EE 18 03    n..
-                lda vduScreenAddressOfGraphicsCursorCellLow                      ; C5F3= A5 D6       %V
+                lda vduWriteCursorScreenAddressLow   ; vduTextCursorCRTCAddressLow on Beeb                   ; C5F3= A5 D6       %V
                 adc vduBytesPerCharacter                    ; C5F5= 6D 4F 03    mO.
                 tax                          ; C5F8= AA          *
-                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; C5F9= A5 D7       %W
+                lda vduWriteCursorScreenAddressHigh  ; vduTextCursorCRTCAddressHigh on Beeb                    ; C5F9= A5 D7       %W
                 adc #$00                     ; C5FB= 69 00       i.
                 jmp LC561                    ; C5FD= 4C 61 C5    LaE
 
@@ -4880,10 +4898,10 @@ vdu17EntryPoint:
                 php                          ; C7AB= 08          .
                 sei                          ; C7AC= 78          x
                 sta $D8                      ; C7AD= 85 D8       .X
-                lda vduTextCursorCRTCAddressHigh                    ; C7AF= AD 4B 03    -K.
+                lda vduTextCursorFlashCycleStatus                    ; C7AF= AD 4B 03    -K.
                 and #$F0                     ; C7B2= 29 F0       )p
                 ora $D8                      ; C7B4= 05 D8       .X
-                sta vduTextCursorCRTCAddressHigh                    ; C7B6= 8D 4B 03    .K.
+                sta vduTextCursorFlashCycleStatus                    ; C7B6= 8D 4B 03    .K.
                 plp                          ; C7B9= 28          (
                 tya                          ; C7BA= 98          .
 LC7BB:
@@ -5137,7 +5155,7 @@ LC8C5:
                 ora interruptAccumulator                      ; C8DA= 05 FC       .|
                 sta $0804,y                  ; C8DC= 99 04 08    ...
                 tax                          ; C8DF= AA          *
-                lda vduTextCursorCRTCAddressHigh                    ; C8E0= AD 4B 03    -K.
+                lda vduTextCursorFlashCycleStatus                    ; C8E0= AD 4B 03    -K.
                 and #$30                     ; C8E3= 29 30       )0
                 bne LC8EB                    ; C8E5= D0 04       P.
                 txa                          ; C8E7= 8A          .
@@ -5285,9 +5303,9 @@ setVduLastCursorStartRegisterValueTo10:
 LC97A:
                 php                          ; C97A= 08          .
                 sei                          ; C97B= 78          x
-                lda vduTextCursorCRTCAddressHigh                    ; C97C= AD 4B 03    -K.
+                lda vduTextCursorFlashCycleStatus                    ; C97C= AD 4B 03    -K.
                 ora #$40                     ; C97F= 09 40       .@
-                sta vduTextCursorCRTCAddressHigh                    ; C981= 8D 4B 03    .K.
+                sta vduTextCursorFlashCycleStatus                    ; C981= 8D 4B 03    .K.
                 plp                          ; C984= 28          (
                 rts                          ; C985= 60          `
 
@@ -5299,41 +5317,42 @@ LC97A:
 vdu25Parameter5 = $031F
 
 vdu25EntryPoint:
-                ldx vduPixelsPerByteMinusOne            ; get pixels per byte         ; C986= AE 61 03    .a.
-                beq vduPlotExtension                    ; if (zero, i.e. no graphics available) then branch (plot extension) ; C989= F0 AC       p,
-                jmp vdu25Plot                               ; jump to main plot routine        ; C98B= 4C 71 CF    LqO
+                ldx vduPixelsPerByteMinusOne            ; get pixels per byte   
+                beq vduPlotExtension                    ; if (zero, i.e. no graphics available) then branch (plot extension) 
+                jmp vdu25Plot                               ; jump to main plot routine  
 
 ; This seems to be setting the Software Cursor, but I've still not really understood it...
-renderCursorMAYBE: 
-                clc                                     ; Carry = 0 	; C98E= 18          .
-                lda vduLastCursorStartRegisterValue     ; A = Scan line no. (eg 0xA/10) cursor should be started in it's char block (R10 on 6845 equiv.)               ; C98F= AD 5F 03    -_.
-                adc vduTextCursorCRTCAddressLow         ; Add scan line number to the Low address of the current cursor position WHY??           ; C992= 6D 4A 03    mJ.
-                sta vduTextCursorCRTCAddressLow         ; Save that back as the current Low address of the cursor WHY??           ; C995= 8D 4A 03    .J.
-                lda vduTextCursorCRTCAddressHigh        ; Load in the High Address of the cursor?            ; C998= AD 4B 03    -K.
-                bmi LC9D0                               ; Branch to RTS if High Addrsss is negative signed (b7 = 1)	; C99B= 30 33       03
-                bcc LC9A4                               ; Branch if addition DIDN'T roll over...	; C99D= 90 05       ..
-                eor #$40                                ; Toggle b6 in Address High			 ; C99F= 49 40       I@
-                sta vduTextCursorCRTCAddressHigh        ; Store that new address            ; C9A1= 8D 4B 03    .K.
+renderCursorToScreen: 
+                clc                                     ; Carry = 0 
+                lda vduLastCursorStartRegisterValue     ; A = Scan line no. (eg 0xA/10) cursor should be started in it's char block (R10 on 6845 equiv.)
+                adc vduTextCursorFlashCounter         ; Add scan line number to the Low address of the current cursor position WHY??
+                sta vduTextCursorFlashCounter         ; Save that back as the current Low address of the cursor WHY??
+                lda vduTextCursorFlashCycleStatus        ; Load in the High Address of the cursor?
+                                                        ; I think this is a flag to say if the cursor is ON or OFF in its flash cycle
+                bmi LC9D0                               ; Branch to RTS if High Addrsss is negative signed (b7 = 1)
+                bcc LC9A4                               ; Branch if addition DIDN'T roll over...
+                eor #$40                                ; Toggle b6 in Address High	
+                sta vduTextCursorFlashCycleStatus        ; Store that new address 
 LC9A4:
-                and #$40                                ; AND CRTC High Byte		; C9A4= 29 40       )@
-                beq LC9AF                               ; Branch if b6 is not set		; C9A6= F0 07       p.
-                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours (this will be 0 in MODE 7 if supported)                 ; C9A8= AD 60 03    -`.
-                sbc #$04                                ; Subtract with carry 4     ; C9AB= E9 04       i.
-                ora #$3F                                ; OR 0x3F - Dont understand will always be FF for the logical colour numbers for all modes      ; C9AD= 09 3F       .?
+                and #$40                                ; AND CRTC High Byte
+                beq LC9AF                               ; Branch if b6 is not set
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours, used to figure out how many bytes needed to store the cursor line (this will be 0 in MODE 7 if supported)  
+                sbc #$04                                ; Subtract with carry 4 
+                ora #$3F                                ; OR 0x3F - Dont understand will always be FF for the logical colour numbers for all modes 
 LC9AF:
-                sta $FB                                 ; Should be a variable used by INT routines... Store the high byte if b6 not set?        ; C9AF= 85 FB       .{
-                lda vduStatusByte                       ; Load VDU Status        ; C9B1= A5 D0       %P
-                and #$30                                ; Check bits 4 (not used) & 5 (gfx cursor)        ; C9B3= 29 30       )0
-                bne LC9D0                               ; Branch if gfx cursor set        ; C9B5= D0 19       P.
-                tax                                     ; Stash status bits 4&5 in X        ; C9B7= AA          *
-                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logica colours, again                 ; C9B8= AD 60 03    -`.
-                sta $FA                                 ; Store it in FA, ok...    ; C9BB= 85 FA       .z
-                ldy #$07                                ; Load 7 into Y         ; C9BD= A0 07        .
-                sec                                     ; Set Carry Flag        ; C9BF= 38          8
+                sta $FB                                 ; Should be a variable used by INT routines... Store the high byte if b6 not set?
+                lda vduStatusByte                       ; Load VDU Status  
+                and #$30                                ; Check bits 4 (not used) & 5 (gfx cursor) 
+                bne LC9D0                               ; Branch if gfx cursor set  
+                tax                                     ; Stash status bits 4&5 in X 
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logica colours, again 
+                sta $FA                                 ; Store it in FA, ok...
+                ldy #$07                                ; Load 7 into Y - the scan line that is updated with cursor line 
+                sec                                     ; Set Carry Flag 
  LC9C0:
-                lda channel0PhaseCounter,x              ; Load whatever is in the sound envelope stuff at status byte with carry??    ; C9C0= BD 0C 08    =..
-                eor $FB                      ; C9C3= 45 FB       E{
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y  ; Write to the Y'th byte of the current cell that Cursor should be shown                ; C9C5= 91 D6       .V
+                lda screenDataAtCursorPos1,x            ; Load the backup copy of whatever was on the screen that the cursor is now at  
+                eor $FB                                 ; XOR that with the  current state of in cursor graphic buffer (either FF or 00) 
+                sta (vduWriteCursorScreenAddressLow),y  ; Write the result to the screen - the Y'th byte (7th) of the current cell that Cursor should be shown in 
                 tya                          ; C9C7= 98          .
                 adc #$07                     ; C9C8= 69 07       i.
                 tay                          ; C9CA= A8          (
@@ -5784,8 +5803,8 @@ LCBE8:
 LCBEA:
                 php                          ; CBEA= 08          .
                 sei                          ; CBEB= 78          x
-                and vduTextCursorCRTCAddressHigh                    ; CBEC= 2D 4B 03    -K.
-                sta vduTextCursorCRTCAddressHigh                    ; CBEF= 8D 4B 03    .K.
+                and vduTextCursorFlashCycleStatus                    ; CBEC= 2D 4B 03    -K.
+                sta vduTextCursorFlashCycleStatus                    ; CBEF= 8D 4B 03    .K.
                 and #$30                     ; CBF2= 29 30       )0
                 bne LCC01                    ; CBF4= D0 0B       P.
                 ldy #$07                     ; CBF6= A0 07        .
@@ -5813,8 +5832,8 @@ osbyte73:
 LCC12:
                 php                          ;
                 sei                          ;
-                ora vduTextCursorCRTCAddressHigh                    ;
-                sta vduTextCursorCRTCAddressHigh                    ;
+                ora vduTextCursorFlashCycleStatus                    ;
+                sta vduTextCursorFlashCycleStatus                    ;
                 plp                          ;
                 and #$0F                     ;
                 tax                          ;
@@ -5950,7 +5969,7 @@ setUpWriteCursor:
                 bne restoreWriteCursorNonMODE7                     ; if (not MODE 7) then branch
                 lda vduMODE7CursorCharacter                        ; get MODE 7 write character
                                                                     ; cursor character $7F
-                sta (vduWriteCursorScreenAddressLow),y             ; store it at top scan line of current
+                sta (vduWriteCursorScreenAddressLow),y             ; TODO: This may be wrong as Dx vars are re-mapped - store it at top scan line of current
                                                                     ; character
 pullTwiceAndExit:
                 pla                                                 ; pull A
@@ -5986,9 +6005,9 @@ restoreWriteCursorNonMODE7:
 LCCCF:
                 sta $D8                      ; CCCF= 85 D8       .X
 LCCD1:
-                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CCD1= B1 D6       1V
+                lda (vduWriteCursorScreenAddressLow),y                  ; CCD1= B1 D6       1V
                 eor $D8                      ; CCD3= 45 D8       EX
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CCD5= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CCD5= 91 D6       .V
                 dey                          ; CCD7= 88          .
                 bpl LCCD1                    ; CCD8= 10 F7       .w
                 pla                          ; CCDA= 68          h
@@ -6028,8 +6047,8 @@ LCCFF:
 LCD0A:
                 lda $DA                      ; CD0A= A5 DA       %Z
                 ldx $D8                      ; CD0C= A6 D8       &X
-                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CD0E= 85 D7       .W
-                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CD10= 86 D6       .V
+                sta vduWriteCursorScreenAddressHigh                      ; CD0E= 85 D7       .W
+                stx vduWriteCursorScreenAddressLow                      ; CD10= 86 D6       .V
                 dec $DC                      ; CD12= C6 DC       F\
                 bne LCCE9                    ; CD14= D0 D3       PS
 LCD16:
@@ -6089,8 +6108,8 @@ LCD5E:
 LCD66:
                 lda $DA                      ; CD66= A5 DA       %Z
                 ldx $D8                      ; CD68= A6 D8       &X
-                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CD6A= 85 D7       .W
-                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CD6C= 86 D6       .V
+                sta vduWriteCursorScreenAddressHigh                      ; CD6A= 85 D7       .W
+                stx vduWriteCursorScreenAddressLow                      ; CD6C= 86 D6       .V
                 dec $DC                      ; CD6E= C6 DC       F\
                 bne LCD47                    ; CD70= D0 D5       PU
                 beq LCD16                    ; CD72= F0 A2       p"
@@ -6110,10 +6129,10 @@ copyCharacterRow:
                 ldy #$00                     ; CD79= A0 00        .
 LCD7B:
                 lda ($D8),y                  ; CD7B= B1 D8       1X
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CD7D= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CD7D= 91 D6       .V
                 iny                          ; CD7F= C8          H
                 bne LCD7B                    ; CD80= D0 F9       Py
-                inc vduScreenAddressOfGraphicsCursorCellHigh                      ; CD82= E6 D7       fW
+                inc vduWriteCursorScreenAddressHigh                      ; CD82= E6 D7       fW
                 inc $D9                      ; CD84= E6 D9       fY
                 dex                          ; CD86= CA          J
                 bne LCD7B                    ; CD87= D0 F2       Pr
@@ -6123,7 +6142,7 @@ LCD89:
 LCD8E:
                 dey                          ; CD8E= 88          .
                 lda ($D8),y                  ; CD8F= B1 D8       1X
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CD91= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CD91= 91 D6       .V
                 tya                          ; CD93= 98          .
                 bne LCD8E                    ; CD94= D0 F8       Px
 LCD96:
@@ -6159,22 +6178,22 @@ LCDBB:
                 dey                          ; CDBE= 88          .
 LCDBF:
                 lda ($D8),y                  ; CDBF= B1 D8       1X
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CDC1= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CDC1= 91 D6       .V
                 dey                          ; CDC3= 88          .
                 bpl LCDBF                    ; CDC4= 10 F9       .y
                 ldx #$02                     ; CDC6= A2 02       ".
 LCDC8:
                 clc                          ; CDC8= 18          .
-                lda vduScreenAddressOfGraphicsCursorCellLow,x                    ; CDC9= B5 D6       5V
+                lda vduWriteCursorScreenAddressLow,x                    ; CDC9= B5 D6       5V
                 adc vduBytesPerCharacter                    ; CDCB= 6D 4F 03    mO.
-                sta vduScreenAddressOfGraphicsCursorCellLow,x                    ; CDCE= 95 D6       .V
-                lda vduScreenAddressOfGraphicsCursorCellHigh,x                    ; CDD0= B5 D7       5W
+                sta vduWriteCursorScreenAddressLow,x                    ; CDCE= 95 D6       .V
+                lda vduWriteCursorScreenAddressHigh,x                    ; CDD0= B5 D7       5W
                 adc #$00                     ; CDD2= 69 00       i.
                 bpl LCDDA                    ; CDD4= 10 04       ..
                 sec                          ; CDD6= 38          8
                 sbc vduScreenSizeHighByte                    ; CDD7= ED 54 03    mT.
 LCDDA:
-                sta vduScreenAddressOfGraphicsCursorCellHigh,x                    ; CDDA= 95 D7       .W
+                sta vduWriteCursorScreenAddressHigh,x                    ; CDDA= 95 D7       .W
                 dex                          ; CDDC= CA          J
                 dex                          ; CDDD= CA          J
                 beq LCDC8                    ; CDDE= F0 E8       ph
@@ -6199,20 +6218,20 @@ LCDFB:
                 ldy vduBytesPerCharacter                    ; CDFE= AC 4F 03    ,O.
 LCE01:
                 dey                          ; CE01= 88          .
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CE02= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CE02= 91 D6       .V
                 bne LCE01                    ; CE04= D0 FB       P{
                 txa                          ; CE06= 8A          .
                 clc                          ; CE07= 18          .
                 adc vduBytesPerCharacter                    ; CE08= 6D 4F 03    mO.
                 tax                          ; CE0B= AA          *
-                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; CE0C= A5 D7       %W
+                lda vduWriteCursorScreenAddressHigh                      ; CE0C= A5 D7       %W
                 adc #$00                     ; CE0E= 69 00       i.
                 bpl LCE16                    ; CE10= 10 04       ..
                 sec                          ; CE12= 38          8
                 sbc vduScreenSizeHighByte                    ; CE13= ED 54 03    mT.
 LCE16:
-                stx vduScreenAddressOfGraphicsCursorCellLow                      ; CE16= 86 D6       .V
-                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CE18= 85 D7       .W
+                stx vduWriteCursorScreenAddressLow                      ; CE16= 86 D6       .V
+                sta vduWriteCursorScreenAddressHigh                      ; CE18= 85 D7       .W
 LCE1A:
                 dec $DA                      ; CE1A= C6 DA       FZ
                 bpl LCDFB                    ; CE1C= 10 DD       .]
@@ -6263,7 +6282,7 @@ LCE33:
 ;
 ; On Exit:
 ;       Carry clear
-;       Stores the result in .vduTextCursorCRTCAddressLow/High, then wraps the address back on
+;       Stores the result in .vduTextCursorFlashCounter/High, then wraps the address back on
 ;       screen if beyond the bottom of the screen. Store the new wrapped result in
 ;       .vduWriteCursorScreenAddressLow/High.
 ;
@@ -6275,7 +6294,7 @@ setTextCursorScreenAddresses:
 
 .if version==100 && subVersion==7
                 lda (vduMultiplicationTableLow),y   ; get CRTC multiplication table pointer
-                sta vduScreenAddressOfGraphicsCursorCellHigh                             ; .vduWriteCursorScreenAddressHigh=A
+                sta vduWriteCursorScreenAddressHigh                             ; .vduWriteCursorScreenAddressHigh=A
                 iny                                 ; Y=Y+1
                 lda #2                              ; A=2
                 and vduCurrentScreenMODEGroup      ; AND with MODE group:
@@ -6290,18 +6309,18 @@ setTextCursorScreenAddresses:
                 beq LCE58
 .else
                 lda multiplyBy640Table,y
-                sta vduScreenAddressOfGraphicsCursorCellHigh                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
+                sta vduWriteCursorScreenAddressHigh                             ; .vduWriteCursorScreenAddressHigh=A        ; CE4A= 85 D7       .W
                 lda multiplyBy640Table+1,y                                                      ; CE4C= B9 6E C3    9nC
                 ldy vduBytesPerCharacterRowHigh                                                 ; CE4F= AC 53 03    ,S.
                 dey                          ; CE52= 88          .
                 bne LCE58                    ; CE53= D0 03       P.
 .endif
-                lsr vduScreenAddressOfGraphicsCursorCellHigh                      ; CE55= 46 D7       FW
+                lsr vduWriteCursorScreenAddressHigh                      ; CE55= 46 D7       FW
                 ror a                        ; CE57= 6A          j
 LCE58:
                 adc vduScreenTopLeftAddressLow                    ; CE58= 6D 50 03    mP.
-                sta vduScreenAddressOfGraphicsCursorCellLow                      ; CE5B= 85 D6       .V
-                lda vduScreenAddressOfGraphicsCursorCellHigh                      ; CE5D= A5 D7       %W
+                sta vduWriteCursorScreenAddressLow                      ; CE5B= 85 D6       .V
+                lda vduWriteCursorScreenAddressHigh                      ; CE5D= A5 D7       %W
                 adc vduScreenTopLeftAddressHigh                    ; CE5F= 6D 51 03    mQ.
                 tay                          ; CE62= A8          (
                 lda vduTextCursorXPosition                    ; CE63= AD 18 03    -..
@@ -6331,20 +6350,23 @@ skipIncs:
 mode7Cursor:
                 clc                          ; CE7B= 18          .
 skipInc:
-                adc vduScreenAddressOfGraphicsCursorCellLow                      ; CE7C= 65 D6       eV
-                sta vduScreenAddressOfGraphicsCursorCellLow                      ; CE7E= 85 D6       .V
+                adc vduWriteCursorScreenAddressLow                      ; CE7C= 65 D6       eV
+                sta vduWriteCursorScreenAddressLow                      ; CE7E= 85 D6       .V
+.if version==100 && subVersion==7
+                ;sta vduTextCursorCRTCAddressLow            ; Should ElkMOS update something? Maybe MODE7 cursor?
+.endif
                 tax                          ; CE80= AA          *
                 tya                          ; CE81= 98          .
                 adc #$00                     ; CE82= 69 00       i.
 .if version==100 && subVersion==7
-                sta vduTextCursorCRTCAddressHigh                   ; store the text cursor CRTC address (before any wraparound)
+                ;sta vduTextCursorFlashCycleStatus          ; Should ElkMOS update the D7 var? Maybe MODE7 cursor?
 
 .endif
                 bpl LCE8A                    ; CE84= 10 04       ..
                 sec                          ; CE86= 38          8
                 sbc vduScreenSizeHighByte                    ; CE87= ED 54 03    mT.
 LCE8A:
-                sta vduScreenAddressOfGraphicsCursorCellHigh                      ; CE8A= 85 D7       .W
+                sta vduWriteCursorScreenAddressHigh                      ; CE8A= 85 D7       .W
                 clc                          ; CE8C= 18          .
                 rts                          ; CE8D= 60          `
 
@@ -6421,7 +6443,7 @@ LCEF3:
                 lda ($DC),y                  ; CEF3= B1 DC       1\
                 ora $D2                      ; CEF5= 05 D2       .R
                 eor $D3                      ; CEF7= 45 D3       ES
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CEF9= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CEF9= 91 D6       .V
                 dey                          ; CEFB= 88          .
                 bpl LCEF3                    ; CEFC= 10 F5       .u
                 rts                          ; CEFE= 60          `
@@ -6435,7 +6457,7 @@ displayCharacterMODE7:
                 dey                                         ; Y=Y-1
                 bpl -                                       ; loop back until done
 writeByteToMODE7Screen:
-                sta (vduScreenAddressOfGraphicsCursorCellLow,x)        ; write byte to screen
+                sta (vduWriteCursorScreenAddressLow,x)        ; write byte to screen
                 rts         
 
 ; ***************************************************************************************
@@ -6456,7 +6478,7 @@ displayACharacter4ColourMODE:
                 lda fourColourMODEByteMaskTable,x                  ; CF07= BD 17 C3    =.C
                 ora $D2                      ; CF0A= 05 D2       .R
                 eor $D3                      ; CF0C= 45 D3       ES
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF0E= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CF0E= 91 D6       .V
                 tya                          ; CF10= 98          .
                 clc                          ; CF11= 18          .
                 adc #$08                     ; CF12= 69 08       i.
@@ -6467,7 +6489,7 @@ displayACharacter4ColourMODE:
                 lda fourColourMODEByteMaskTable,x                  ; CF19= BD 17 C3    =.C
                 ora $D2                      ; CF1C= 05 D2       .R
                 eor $D3                      ; CF1E= 45 D3       ES
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF20= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CF20= 91 D6       .V
                 tya                          ; CF22= 98          .
                 sbc #$08                     ; CF23= E9 08       i.
                 tay                          ; CF25= A8          (
@@ -6495,7 +6517,7 @@ LCF34:
                 lda sixteenColourMODEByteMaskTable,x                  ; CF3F= BD 27 C3    ='C
                 ora $D2                      ; CF42= 05 D2       .R
                 eor $D3                      ; CF44= 45 D3       ES
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; CF46= 91 D6       .V
+                sta (vduWriteCursorScreenAddressLow),y                  ; CF46= 91 D6       .V
                 clc                          ; CF48= 18          .
                 tya                          ; CF49= 98          .
                 adc #$08                     ; CF4A= 69 08       i.
@@ -8028,36 +8050,37 @@ LD6D8:
 ; - 
 ; ------------------------------------
 swapSoftwareCursorAndScreenData:
-                php                                     ; Push status to stack                      ; D6DE= 08          .
-                sei                                     ; Disable interupts                       ; D6DF= 78          x
-                pha                                     ; Push the accumulator     ; D6E0= 48          H
-                lda vduStatusByte                       ; Load the VDU status    ; D6E1= A5 D0       %P
-                and #$30                                ; Check Gfx cursor enabled and the 'reserved' bit, interesting...    ; D6E3= 29 30       )0
-                bne LD70E                               ; Exit if Gfx cursor or 'reserved' bit set    ; No cursor displayed, exit
-                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours in this mode                 ; D6E7= AD 60 03    -`.
-                sta $D8                                 ; Store in temp var D8 (could be write cursor?)                     ; D6EA= 85 D8       .X
-                lda vduTextCursorCRTCAddressHigh        ; Load the High address of the 'cursor' (what are we talking about here?)            ; D6EC= AD 4B 03    -K.
-                eor #$80                                ; XOR 80, leave all bits, but flip bit 7        ; D6EF= 49 80       I.
-                sta vduTextCursorCRTCAddressHigh        ; Save it back                               ; D6F1= 8D 4B 03    .K.
+                php                                     ; Push status to stack 
+                sei                                     ; Disable interupts    
+                pha                                     ; Push the accumulator 
+                lda vduStatusByte                       ; Load the VDU status  
+                and #$30                                ; Check Gfx cursor enabled and the 'reserved' bit, interesting... 
+                bne LD70E                               ; Exit if Gfx cursor or 'reserved' bit set - No cursor displayed, exit
+                lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours in this mode  
+                sta $D8                                 ; Store in temp var D8 (could be write cursor?)  
+                lda vduTextCursorFlashCycleStatus        ; Load the High address of the 'cursor' (what are we talking about here?) 
+                eor #$80                                ; XOR 80, leave all bits, but flip bit 7  
+                sta vduTextCursorFlashCycleStatus        ; Save it back                            
                                                         ; Why flip bit 7
                                                         ; If cursor was at 7C01, then high byte is 7C, this would change it to FC
                                                         ; Hmm, lets carry on and see...          
-                ldx #$00                                ; X=0           ; D6F4= A2 00       ".
-                ldy #$07                                ; Y=7           ; D6F6= A0 07        .
-                sec                                     ; Set Carry     ; D6F8= 38          8
+                ldx #$00                                ; X=0      
+                ldy #$07                                ; Y=7      
+                sec                                     ; Set Carry
 LD6F9:
-                lda (vduScreenAddressOfGraphicsCursorCellLow),y     ; Start by loading whatever is in line 8 of the current character?              ; D6F9= B1 D6       1V
-                pha                                     ; Push to stack     ; D6FB= 48          H
-                lda channel0PhaseCounter,x              ; Load whatever is in channel 0 Phase Counter     ; D6FC= BD 0C 08    =..
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y     ; Store the ch0 phase counter into that character position?!               ; D6FF= 91 D6       .V
-                pla                                     ; Pull whatever character cell row was    ; D701= 68          h
-                sta channel0PhaseCounter,x              ; Store that in Sound Phase 0 var (I don't think this is used in Elk)    ; D702= 9D 0C 08    ...
-                inx                                     ; X++ (ie, =1)          ; D705= E8          h
-                tya                                     ; A=Y (ie, =7)       ; D706= 98          .
-                adc #$07                                ; Add 7 + carry (ie = 15 )            ; D707= 69 07       i.
-                tay                          ; D709= A8          (
-                lsr $D8                      ; D70A= 46 D8       FX
-                bne LD6F9                    ; D70C= D0 EB       Pk
+                lda (vduWriteCursorScreenAddressLow),y     ; Start by loading whatever is in line 8 of the current character?   
+                pha                                     ; Push to stack 
+                lda screenDataAtCursorPos1,x            ; Load whatever is in channel 0 Phase Counter  
+                sta (vduWriteCursorScreenAddressLow),y     ; Store the ch0 phase counter into that character position?!   
+                pla                                     ; Pull whatever character cell row was 
+                sta screenDataAtCursorPos1,x            ; Store that in Sound Phase 0 var (I don't think this is used in Elk)  
+                inx                                     ; X++ (ie, =1)         
+                tya                                     ; A=Y (ie, =7)      
+                adc #$07                                ; Add 7 + carry (ie = 15 )  
+                tay                                     ; Y=A (ie, 15)    
+                lsr $D8                                 ; Ah, if its more than 2 colours then there is more than 1 bytes per character line so we need
+                                                        ; to save them all   
+                bne LD6F9                               ; Loop again if we need to save more screen bytes  
 LD70E:
                 pla                          ; D70E= 68          h
                 plp                          ; D70F= 28          (
@@ -8078,7 +8101,7 @@ LD716:
 LD71C:
                 lda vduColourMaskLeft                    ; D71C= AD 62 03    -b.
                 sta $DA                      ; D71F= 85 DA       .Z
-                lda (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D721= B1 D6       1V
+                lda (vduWriteCursorScreenAddressLow),y                  ; D721= B1 D6       1V
                 eor vduBackgroundTextColour                    ; D723= 4D 58 03    MX.
                 clc                          ; D726= 18          .
 LD727:
@@ -8955,7 +8978,7 @@ handleRTCOrDisplayEndIRQ:
                 and #$04                     ; isolate Display End bit
                 beq LDB6F                    ; taken if not display end IRQ
 ; handle display end IRQ
-                jsr renderCursorMAYBE 
+                jsr renderCursorToScreen 
                 lda videoULAFlashingColourIntervalCount
                 beq LDBBB
                 dec videoULAFlashingColourIntervalCount
@@ -12834,14 +12857,14 @@ LF0DB_300:
                 ror a
                 sta LFC7F
                 rol a
-                stx vduScreenAddressOfGraphicsCursorCellLow
-                sty vduScreenAddressOfGraphicsCursorCellHigh
+                stx vduWriteCursorScreenAddressLow
+                sty vduWriteCursorScreenAddressHigh
                 ldy #0
                 bvs LF0ED_300
-                lda (vduScreenAddressOfGraphicsCursorCellLow),y
+                lda (vduWriteCursorScreenAddressLow),y
 LF0ED_300:
-                sta (vduScreenAddressOfGraphicsCursorCellLow),y
-                ldy vduScreenAddressOfGraphicsCursorCellHigh
+                sta (vduWriteCursorScreenAddressLow),y
+                ldy vduWriteCursorScreenAddressHigh
                 clc
                 ror a
                 sta LFC7F
