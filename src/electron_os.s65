@@ -2104,6 +2104,9 @@ colourPaletteRegistersStart                 = $fe08                             
 ; crtcAddressRegister                        = $FE00     ;
 ; crtcAddressWrite                           = $FE01     ;
 
+jafaCrtcAddressRegister                    = $FC1C
+jafaCrtcAddressWrite                       = $FC1D
+
 ; ***************************************************************************************
 ;
 ; ACIA 6850, Control Register ($FE08)
@@ -4465,7 +4468,7 @@ vdu8EntryPoint:
                 dec vduTextCursorXPosition                    ; C543= CE 18 03    N..
                 ldx vduTextCursorXPosition                    ; C546= AE 18 03    ...
                 cpx vduTextWindowLeft                    ; C549= EC 08 03    l..
-                bmi LC56C                    ; C54C= 30 1E       0.
+                bmi wrapFromLeftEdgeToRightEdgeOfTextWindow                    ; C54C= 30 1E       0.
                 
                 
                 lda vduWriteCursorScreenAddressLow      ; This is "LDA vduTextCursorCRTCAddressLow" on Beeb MOS                ; C54E= A5 D6       %V
@@ -4476,21 +4479,27 @@ vdu8EntryPoint:
                 sbc #$00                     ; C557= E9 00       i.
                 cmp vduStartScreenAddressHighByte                    ; C559= CD 4E 03    MN.
                 
-                bcs LC561                    ; C55C= B0 03       0.
+                bcs updateWriteCursorScreenAddressFromAX                    ; C55C= B0 03       0.
                 
                 
                 adc vduScreenSizeHighByte                    ; C55E= 6D 54 03    mT.
-
-LC561:
+; Update Write Cursor Screen Address vars from A (high) & X (low)
+; wraps High back to start if N flag is set
+updateWriteCursorScreenAddressFromAX:
                 stx vduWriteCursorScreenAddressLow                      ; C561= 86 D6       .V
                 bpl LC569                    ; C563= 10 04       ..
                 sec                          ; C565= 38          8
                 sbc vduScreenSizeHighByte                    ; C566= ED 54 03    mT.
 LC569:
                 sta vduWriteCursorScreenAddressHigh                      ; C569= 85 D7       .W
+.if version==100 && subVersion==7                
+                ldy #14
+                jsr setTwoCRTCRegisters
+.endif
                 rts                          ; C56B= 60          `
 
-LC56C:
+; ***************************************************************************************
+wrapFromLeftEdgeToRightEdgeOfTextWindow:
                 lda vduTextWindowRight                    ; C56C= AD 0A 03    -..
                 sta vduTextCursorXPosition                    ; C56F= 8D 18 03    ...
 LC572:
@@ -4579,7 +4588,7 @@ vdu9EntryPoint:
                 tax                          ; C5F8= AA          *
                 lda vduWriteCursorScreenAddressHigh  ; vduTextCursorCRTCAddressHigh on Beeb                    ; C5F9= A5 D7       %W
                 adc #$00                     ; C5FB= 69 00       i.
-                jmp LC561                    ; C5FD= 4C 61 C5    LaE
+                jmp updateWriteCursorScreenAddressFromAX                    ; C5FD= 4C 61 C5    LaE
 
 ; ***************************************************************************************
 moveTextCursorToLeftEdgeAndDown:
@@ -5404,28 +5413,41 @@ hardwareScrollUp:
 ;
 ; ***************************************************************************************
 vdu26EntryPoint:
-                lda #$00                     ; CA02= A9 00       ).
-                ldx #$2C                     ; CA04= A2 2C       ",
+                lda #$00                            ; A=0 
+                ldx #$2C                            ; X=loop counter 
 LCA06:
-                sta vduGraphicsWindowPixelsLeftLow,x                  ; CA06= 9D 00 03    ...
-                dex                          ; CA09= CA          J
-                bpl LCA06                    ; CA0A= 10 FA       .z
-                ldx vduCurrentScreenMODE                    ; CA0C= AE 55 03    .U.
-                ldy textWindowRightColumnTable,x                  ; CA0F= BC B4 C3    <4C
-                sty vduTextWindowRight                    ; CA12= 8C 0A 03    ...
-                jsr LCA87                    ; CA15= 20 87 CA     .J
-                ldy textWindowBottomRowTable,x                  ; CA18= BC AD C3    <-C
-                sty vduTextWindowBottom                    ; CA1B= 8C 09 03    ...
-                ldy #$03                     ; CA1E= A0 03        .
-                sty $0323                    ; CA20= 8C 23 03    .#.
-                iny                          ; CA23= C8          H
-                sty $0321                    ; CA24= 8C 21 03    .!.
-                dec $0322                    ; CA27= CE 22 03    N".
-                dec $0320                    ; CA2A= CE 20 03    N .
-                jsr setTextCursorScreenAddresses                    ; CA2D= 20 42 CE     BN
-                jsr vdu24EntryPoint                    ; CA30= 20 38 CA     8J
-                lda #$F7                     ; CA33= A9 F7       )w
-                jmp clearVDUStatusByteFlags                    ; CA35= 4C 30 C5    L0E
+                sta vduVariablesStart,x             ; zero a whole bunch of vdu variables,
+                dex                                 ; including the text and graphics windows
+                bpl LCA06                                           
+                
+                ; use data for current screen mode
+                ldx vduCurrentScreenMODE            ; screen MODE
+                
+                ; reset text window
+                ldy textWindowRightColumnTable,x    ; text window right edge maximum
+                sty vduTextWindowRight              ; store in the text window right
+                jsr LCA87                           ; calculate number of bytes in a text
+                                                    ; window row
+                ldy textWindowBottomRowTable,x      ; text window bottom edge maximum
+                sty vduTextWindowBottom             ; bottom edge
+                
+                ; reset graphics window
+                ldy #$03                            ; Y = 3
+                sty $0323                           ; top edge high byte    = 3
+                iny                                 ; Y = 4
+                sty $0321                           ; right edge high byte  = 4
+                dec $0322                           ; top edge low          = $FF
+                dec $0320                           ; right edge low        = $FF
+                                                    ;
+                                                    ; so now top edge = $03FF = 1023
+                                                    ; and right edge  = $04FF = 1279
+                                                    ;
+                jsr setTextCursorScreenAddresses    ; TODO: Nice place to update the Mode 7 Cursor???
+                jsr vdu24EntryPoint                 ; do VDU 24 (define graphics window)
+                
+                ; reset scrolling
+                lda #%11110111                      ; }
+                jmp clearVDUStatusByteFlags         ; } clear bit 3 of .vduStatusByte
 
 ; ***************************************************************************************
 ;
@@ -5716,7 +5738,7 @@ initializeDisplayAndHomeCursor:
                 ldx #$00                     																; CB9D= A2 00       ".
                 lda vduStartScreenAddressHighByte                    										; CB9F= AD 4E 03    -N.
                 jsr hardwareScrollUp                    																; CBA2= 20 F0 C9     pI
-                jsr LC561                    																; CBA5= 20 61 C5     aE
+                jsr updateWriteCursorScreenAddressFromAX                    																; CBA5= 20 61 C5     aE
                 jsr LCC03                    																; CBA8= 20 03 CC     .L
                 lda #$00                     ; CBAB= A9 00       ).
                 sta pagedModeCounter                    ; CBAD= 8D 69 02    .i.
@@ -6369,6 +6391,26 @@ skipInc:
                 sbc vduScreenSizeHighByte                    ; CE87= ED 54 03    mT.
 LCE8A:
                 sta vduWriteCursorScreenAddressHigh                      ; CE8A= 85 D7       .W
+
+.if version==100 && subVersion==7
+                ldy #14
+; ***************************************************************************************
+;
+; Write to two sequential registers on the CRTC
+;
+; On Entry:
+;       Y = register number
+;       A = First value to write (to register Y)
+;       X = Second value to write (to register Y+1)
+;
+; ***************************************************************************************
+setTwoCRTCRegisters:
+                sty jafaCrtcAddressRegister                            ; set which CRTC register to write into
+                sta jafaCrtcAddressWrite                               ; write A into CRTC register
+                iny                                                ; increment Y to the next CRTC register
+                sty jafaCrtcAddressRegister                            ; set which CRTC register to write into
+                stx jafaCrtcAddressWrite                               ; write X into CRTC register      
+.endif
                 clc                          ; CE8C= 18          .
                 rts                          ; CE8D= 60          `
 
@@ -14124,7 +14166,12 @@ LF89B:
                 jsr shouldPrintMessage                    ; F8A1= 20 AD E5     -e
                 beq LF892                    ; F8A4= F0 EC       pl
                 jsr LF9B6                    ; Print inline text
+; Desperate ploy to save a few bytes...
+.if version==100 && subVersion==7
+                .text "R>R"
+.else
                 .text "RECORD then RETURN"
+.endif
                 .byte 0
 LF8BC:
                 jsr LF905
@@ -14402,7 +14449,12 @@ LFA1E:
                 jsr LFAB0                    ; FA2B= 20 B0 FA     0z
                 ldy #$FF                     ; Print inline text
                 jsr LF9BA
+.if version==100 && subVersion==7
+                .text 13,7,"Rewind",0
+
+.else
                 .text 13,7,"Rewind tape",13,13,0
+.endif
 LFA43:
                 rts                          ; FA43= 60          `
 
@@ -14656,13 +14708,16 @@ LFBFD_300:
                 jmp LF0DB_300
 
 .else
-
+    .if version==100 && subVersion==7
+                .fill $fc00-*,0
+    .else
                 .fill $fbfe-*,0
 
                 ; This doesn't seem to be used, and doesn't seem to
                 ; refer to anything meaningful.
                 .byte $20                    ; ???
                 .byte $ed                    ; ???
+    .endif
 
 .endif
 
