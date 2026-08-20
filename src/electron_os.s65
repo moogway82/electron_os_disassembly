@@ -5332,18 +5332,27 @@ vdu25EntryPoint:
                 beq vduPlotExtension                    ; if (zero, i.e. no graphics available) then branch (plot extension) 
                 jmp vdu25Plot                               ; jump to main plot routine  
 
-; This seems to be setting the Software Cursor, but I've still not really understood it...
+; ***************************************************************************************
+;
+;   Render the Text Cursor to the screen for Modes 0-6 (Mode 7 just returns)
+;
+; ***************************************************************************************
 renderCursorToScreen: 
+.if version==100 && subVersion==7
+                ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
+                dex                                 ; X=X-1
+                beq renderCursorToScreen_return         ; if (in MODE 7) then return
+.endif
                 clc                                     ; Carry = 0 
                 lda vduLastCursorStartRegisterValue     ; A = Scan line no. (eg 0xA/10) cursor should be started in it's char block (R10 on 6845 equiv.)
                 adc vduTextCursorFlashCounter           ; Add scan line number to the Low address of the current cursor position WHY??
                 sta vduTextCursorFlashCounter           ; Save that back as the current Low address of the cursor WHY??
-                lda vduTextCursorFlashCycleStatus        ; Load in the High Address of the cursor?
+                lda vduTextCursorFlashCycleStatus       ; Load in the High Address of the cursor?
                                                         ; I think this is a flag to say if the cursor is ON or OFF in its flash cycle
-                bmi LC9D0                               ; Branch to RTS if High Addrsss is negative signed (b7 = 1)
+                bmi renderCursorToScreen_return         ; Branch to RTS if High Addrsss is negative signed (b7 = 1)
                 bcc LC9A4                               ; Branch if addition DIDN'T roll over...
                 eor #$40                                ; Toggle b6 in Address High	
-                sta vduTextCursorFlashCycleStatus        ; Store that new address 
+                sta vduTextCursorFlashCycleStatus       ; Store that new address 
 LC9A4:
                 and #$40                                ; AND CRTC High Byte
                 beq LC9AF                               ; Branch if b6 is not set
@@ -5354,7 +5363,7 @@ LC9AF:
                 sta $FB                                 ; Should be a variable used by INT routines... Store the high byte if b6 not set?
                 lda vduStatusByte                       ; Load VDU Status  
                 and #$30                                ; Check bits 4 (not used) & 5 (gfx cursor) 
-                bne LC9D0                               ; Branch if gfx cursor set  
+                bne renderCursorToScreen_return         ; Branch if gfx cursor set  
                 tax                                     ; Stash status bits 4&5 in X 
                 lda vduNumberOfLogicalColoursMinusOne   ; Load no. logica colours, again 
                 sta $FA                                 ; Store it in FA, ok...
@@ -5370,8 +5379,9 @@ LC9AF:
                 inx                          ; C9CB= E8          h
                 lsr $FA                      ; C9CC= 46 FA       Fz
                 bne LC9C0                    ; C9CE= D0 F0       Pp
-LC9D0:
+renderCursorToScreen_return:
                 rts                          ; C9D0= 60          `
+
 
 LC9D1:
                 ldx vduScreenTopLeftAddressLow                    ; C9D1= AE 50 03    .P.
