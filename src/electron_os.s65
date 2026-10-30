@@ -5708,6 +5708,20 @@ setMODE:
                 plp                          																; CB49= 28          (
                 lda numberOfColoursMinusOneInMODETable,x    ; Look up the no. colours for mode, store in A  ; CB4A= BD CF C3    =OC
                 sta vduNumberOfLogicalColoursMinusOne       ; Save that in VDU Var             				; CB4D= 8D 60 03    .`.
+                ; Convenient place to stick setting the MODE 7 vars as easy to detect?
+.if version==100 && subVersion==7
+                bne skipSetting6845Regs
+;                txa                                         ; Pushing X to stack
+;                pha
+                ldy #10                                     ; R10 Cursor start scanline
+                lda $72                                     ; $72 = 11 (=Blink, 1/32 Field Rate) + 10010 (=row 18)
+                ldx $13                                     ; R11 Cursor end scanline = 19
+                jsr setTwoCRTCRegisters                     ; set them
+;                pla                                         ; Pull X back from stack to continue
+;                tax
+                ldx vduCurrentScreenMODE
+skipSetting6845Regs:
+.endif                
                 lda bytesPerCharacter,x                  	; Look up no. bytes per character 				; CB50= BD BB C3    =;C
                 sta vduBytesPerCharacter                    ; Save it in VDU Var 							; CB53= 8D 4F 03    .O.
                 lda pixelsPerByteMinusOneInMODETable,x      ; Look up pixels per byte 			            ; CB56= BD F5 C3    =uC
@@ -13765,7 +13779,11 @@ LF5C5:
                 jsr LFA6D                    ; F5C5= 20 6D FA     mz
                 brk
                 .byte $D6
+.if version==100 && subVersion==7
+                .text "File NF"
+.else
                 .text "File not found"
+.endif;
                 brk
 
 LF5D9:
