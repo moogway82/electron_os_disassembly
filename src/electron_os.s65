@@ -4242,7 +4242,7 @@ readVDUEntryPointAddressAndParameters:
                 lda vduEntryPointTableLow,y                  ; get routine LSB
                 sta vduJumpVectorLow                    ; store routine MSB
                 lda vduEntryPointTableHigh,y                  ; get routine MSB
-                bmi LC4BF        ; branch taken if MSB usable directly
+                bmi explicitAddressNoParameters        ; branch taken if MSB usable directly
                 tax                          ; 
                 ora #$F0
                 sta $026A        ; initialise initial VDU queue length
@@ -4280,16 +4280,16 @@ vduParametersAreOutstanding:
                 bit vduStatusByte
                 bmi LC4AE
                 bvs LC4A0
-                jsr LD25F
+                jsr executeRequiredVDUFunction
                 clc
                 rts
 
 LC4A0:
                 jsr exchangeTextCursorAndInputCursorValues
                 jsr setUpWriteCursor
-                jsr LD25F
+                jsr executeRequiredVDUFunction
 LC4A9:
-                jsr LC4DF
+                jsr reswapCursorsBack
 LC4AC:
                 clc
                 rts
@@ -4310,31 +4310,41 @@ vdu1EntryPoint:
                 lsr a
                 bcc vdu0EntryPoint
                 txa
-                jmp LDEAE
-
-LC4BF:
+                jmp sendValidByteToPrinter
+; ***************************************************************************************
+explicitAddressNoParameters:
                 sta $035E                    ; store routine MSB
                 tya
+
+; set carry if VDU number is within range 8-13 (cursor movement)
                 cmp #$08
                 bcc LC4CD
                 eor #$FF
                 cmp #$F2
                 eor #$FF
+
 LC4CD:
                 bit vduStatusByte
-                bmi LC4F7
+                bmi checkForVDUReenable
                 php
-                jsr LD25F
+                jsr executeRequiredVDUFunction
                 plp
                 bcc LC4DB
+                ; fall through...
+
+; ***************************************************************************************
 exitVDUCHR:
                 lda vduStatusByte
                 lsr a
 LC4DB:
                 bit vduStatusByte
                 bvc vdu0EntryPoint
-LC4DF:
+                ; fall through...
+
+; ***************************************************************************************
+reswapCursorsBack:
                 jsr setUpWriteCursor
+
 exchangeTextCursorAndInputCursorValues:
                 php
                 pha
@@ -4343,13 +4353,14 @@ exchangeTextCursorAndInputCursorValues:
                 jsr LCD1A
                 jsr setTextCursorScreenAddresses
                 lda vduStatusByte
-                eor #$02
+                eor #%00000010
                 sta $D0
                 pla
                 plp
                 rts
 
-LC4F7:
+; ***************************************************************************************
+checkForVDUReenable:
                 eor #$06                     ; C4F7= 49 06       I.
                 bne LC4FF                    ; C4F9= D0 04       P.
                 lda #$7F                     ; C4FB= A9 7F       ).
@@ -4361,9 +4372,18 @@ LC4FF:
 LC504:
                 rts                          ; C504= 60          `
 
+; ***************************************************************************************
+;
+; Check whether the text or graphics cursor is active
+;
+; On Exit:
+;    A = 0   if text cursor is active           (Z flag set)
+;    A = $20 otherwise (graphics cursor active) (Z flag clear)
+;
+; ***************************************************************************************
 isTextCursorActive:
                 lda vduStatusByte
-                and #$20
+                and #%00100000
                 rts
 
 LC50A:
@@ -4390,6 +4410,7 @@ vdu14EntryPoint:
 vdu2EntryPoint:
                 jsr LC50A                    ; C51C= 20 0A C5     .E
                 lda #$94                     ; C51F= A9 94       ).
+                ; fall through...
 
 ; ***************************************************************************************
 ;
@@ -4412,6 +4433,7 @@ LC523:
 vdu3EntryPoint:
                 jsr LC50A                    ; C527= 20 0A C5     .E
                 lda #$0A                     ; C52A= A9 0A       ).
+                ; fall through...
 
 ; ***************************************************************************************
 ;
@@ -5339,8 +5361,7 @@ vdu25EntryPoint:
 ; ***************************************************************************************
 renderCursorToScreen: 
 .if version==100 && subVersion==7
-                ldx vduBytesPerCharacter                    ; CE66= AE 4F 03    .O.
-                dex                                 ; X=X-1
+                ldx vduNumberOfLogicalColoursMinusOne   ; number of logical colours less 1 - In Mode 7 it's 0
                 beq renderCursorToScreen_return         ; if (in MODE 7) then return
 .endif
                 clc                                     ; Carry = 0 
@@ -7306,20 +7327,20 @@ LD22D:
 LD250:
                 sta $0336                    ; D250= 8D 36 03    .6.
                 php                          ; D253= 08          .
-                bcs LD25F                    ; D254= B0 09       0.
+                bcs executeRequiredVDUFunction                    ; D254= B0 09       0.
                 jmp ($0332)                  ; D256= 6C 32 03    l2.
 
 LD259:
                 dey                          ; D259= 88          .
-                bpl LD25F                    ; D25A= 10 03       ..
+                bpl executeRequiredVDUFunction                    ; D25A= 10 03       ..
                 jsr LD2EA                    ; D25C= 20 EA D2     jR
-LD25F:
+executeRequiredVDUFunction:
                 jmp (vduJumpVectorLow)                  ; D25F= 6C 5D 03    l].
 
 LD262:
                 iny                          ; D262= C8          H
                 cpy #$08                     ; D263= C0 08       @.
-                bne LD25F                    ; D265= D0 F8       Px
+                bne executeRequiredVDUFunction                    ; D265= D0 F8       Px
                 clc                          ; D267= 18          .
                 lda vduScreenAddressOfGraphicsCursorCellLow                      ; D268= A5 D4       %T
                 adc vduBytesPerCharacterRowLow                    ; D26A= 6D 52 03    mR.
@@ -7336,13 +7357,13 @@ LD27A:
 
 LD281:
                 lsr $D1                      ; D281= 46 D1       FQ
-                bcc LD25F                    ; D283= 90 DA       .Z
+                bcc executeRequiredVDUFunction                    ; D283= 90 DA       .Z
                 jsr LD304                    ; D285= 20 04 D3     .S
                 jmp (vduJumpVectorLow)                  ; D288= 6C 5D 03    l].
                 
 LD28B:
                 asl $D1                      ; D28B= 06 D1       .Q
-                bcc LD25F                    ; D28D= 90 D0       .P
+                bcc executeRequiredVDUFunction                    ; D28D= 90 D0       .P
                 jsr LD314                    ; D28F= 20 14 D3     .S
                 jmp (vduJumpVectorLow)                  ; D292= 6C 5D 03    l].
 
@@ -8111,7 +8132,10 @@ swapSoftwareCursorAndScreenData:
                 and #$30                                ; Check Gfx cursor enabled and the 'reserved' bit, interesting... 
                 bne LD70E                               ; Exit if Gfx cursor or 'reserved' bit set - No cursor displayed, exit
                 lda vduNumberOfLogicalColoursMinusOne   ; Load no. logical colours in this mode  
-                sta vduTempStoreD8                                 ; Store in temp var D8 (could be write cursor?)  
+.if version==100 && subVersion==7
+                beq LD70E                               ; Lets just Exit if in Mode 7 for now, will actually update the cursor in future...
+.endif
+                sta vduTempStoreD8                       ; Store in temp var D8 (could be write cursor?)  
                 lda vduTextCursorFlashCycleStatus        ; Load the High address of the 'cursor' (what are we talking about here?) 
                 eor #$80                                ; XOR 80, leave all bits, but flip bit 7  
                 sta vduTextCursorFlashCycleStatus        ; Save it back                            
@@ -9396,7 +9420,7 @@ LDEA4:
                 bvs LDEC9                    ; DEA7= 70 20       p
                 cmp $0286                    ; DEA9= CD 86 02    M..
                 beq LDEC9                    ; DEAC= F0 1B       p.
-LDEAE:
+sendValidByteToPrinter:
                 php                          ; DEAE= 08          .
                 sei                          ; DEAF= 78          x
                 tax                          ; DEB0= AA          *
