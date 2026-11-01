@@ -5711,14 +5711,10 @@ setMODE:
                 ; Convenient place to stick setting the MODE 7 vars as easy to detect?
 .if version==100 && subVersion==7
                 bne skipSetting6845Regs
-;                txa                                         ; Pushing X to stack
-;                pha
                 ldy #10                                     ; R10 Cursor start scanline
-                lda $72                                     ; $72 = 11 (=Blink, 1/32 Field Rate) + 10010 (=row 18)
-                ldx $13                                     ; R11 Cursor end scanline = 19
+                lda #$72                                    ; $72 = 11 (=Blink, 1/32 Field Rate) + 10010 (=row 18)
+                ldx #$13                                    ; R11 Cursor end scanline = 19
                 jsr setTwoCRTCRegisters                     ; set them
-;                pla                                         ; Pull X back from stack to continue
-;                tax
                 ldx vduCurrentScreenMODE
 skipSetting6845Regs:
 .endif                
