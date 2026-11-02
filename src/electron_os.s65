@@ -7153,8 +7153,32 @@ LD0F4:
 ;
 ; ***************************************************************************************
 plotLine:
-                jsr LD324                    ; D0FE= 20 24 D3     $S
-                lda $032B                    ; D101= AD 2B 03    -+.
+                jsr plotLineInitialiseDeltaValues                    ; D0FE= 20 24 D3     $S
+
+; Now we have set the delta values:
+;
+;   Set .vduPlotLineDeltaX = graphics cursorX - parameterX  (lets call this dX)
+;   Set .vduPlotLineDeltaY = graphics cursorY - parameterY  (lets call this dY)
+;
+; At this point, the values in .vduPlotLineDeltaX/Y are the delta in pixels for the line.
+; The values are 16 bit signed integers. Positive values are to the left and down on screen,
+; like so:
+;
+;                                         |
+;                                         |
+;                                         |
+;                       dX /______________|_____________
+;                          \           ###|<-(current graphics
+;                                   ###   |   cursor position)
+;                                ###      |
+;                             ###         |
+;        (new parameter -> ###           \|/
+;           coordinates)                 dY
+;
+;
+; Now calculate the dominant axis, i.e. which of dx and dy has the largest magnitude.
+
+                lda vduPlotLineDeltaYHigh    ; D101= AD 2B 03    -+.
                 eor $0329                    ; D104= 4D 29 03    M).
                 bmi LD118                    ; D107= 30 0F       0.
                 lda $032A                    ; D109= AD 2A 03    -*.
@@ -7298,7 +7322,7 @@ LD1FA:
                 bit $0334                    ; D200= 2C 34 03    ,4.
                 bpl LD20A                    ; D203= 10 05       ..
                 dec $0334                    ; D205= CE 34 03    N4.
-                bne LD22D                    ; D208= D0 23       P#
+                bne postWritePointToScreen                    ; D208= D0 23       P#
 LD20A:
                 inc $0334                    ; D20A= EE 34 03    n4.
                 asl a                        ; D20D= 0A          .
@@ -7309,7 +7333,7 @@ LD210:
                 jsr checkPointXInBoundsAndSetScreenAddresses                    ; D214= 20 75 D7     uW
                 ldx $DA                      ; D217= A6 DA       &Z
                 ora #$00                     ; D219= 09 00       ..
-                bne LD22D                    ; D21B= D0 10       P.
+                bne postWritePointToScreen                    ; D21B= D0 10       P.
 LD21D:
                 lda $D1                      ; D21D= A5 D1       %Q
                 and $DE                      ; D21F= 25 DE       %^
@@ -7319,23 +7343,26 @@ LD21D:
                 and $D1                      ; D227= 25 D1       %Q
                 eor vduTempStoreD8                      ; D229= 45 D8       EX
                 sta (vduScreenAddressOfGraphicsCursorCellLow),y                  ; D22B= 91 D4       .T
-LD22D:
+
+postWritePointToScreen:
                 sec                          ; D22D= 38          8
-                lda $0335                    ; D22E= AD 35 03    -5.
-                sbc $0337                    ; D231= ED 37 03    m7.
-                sta $0335                    ; D234= 8D 35 03    .5.
-                lda $0336                    ; D237= AD 36 03    -6.
-                sbc $0338                    ; D23A= ED 38 03    m8.
+                lda vduPlotLineErrorTermLow                    ; D22E= AD 35 03    -5.
+                sbc vduPlotLineAbsNonDominantAxisDeltaLow                    ; D231= ED 37 03    m7.
+                sta vduPlotLineErrorTermLow                    ; error_term = error_term - non-dominant axis delta     ; D234= 8D 35 03    .5.
+                lda vduPlotLineErrorTermHigh                    ; D237= AD 36 03    -6.
+                sbc vduPlotLineAbsNonDominantAxisDeltaHigh                    ; D23A= ED 38 03    m8.
+
                 bcs LD250                    ; D23D= B0 11       0.
+
                 sta vduTempStoreD8                      ; D23F= 85 D8       .X
-                lda $0335                    ; D241= AD 35 03    -5.
+                lda vduPlotLineErrorTermLow                    ; D241= AD 35 03    -5.
                 adc $0339                    ; D244= 6D 39 03    m9.
-                sta $0335                    ; D247= 8D 35 03    .5.
+                sta vduPlotLineErrorTermLow                    ; D247= 8D 35 03    .5.
                 lda vduTempStoreD8                      ; D24A= A5 D8       %X
                 adc $033A                    ; D24C= 6D 3A 03    m:.
                 clc                          ; D24F= 18          .
 LD250:
-                sta $0336                    ; D250= 8D 36 03    .6.
+                sta vduPlotLineErrorTermHigh                    ; D250= 8D 36 03    .6.
                 php                          ; D253= 08          .
                 bcs executeRequiredVDUFunction                    ; D254= B0 09       0.
                 jmp ($0332)                  ; D256= 6C 32 03    l2.
@@ -7468,7 +7495,7 @@ LD31F:
                 sta vduScreenAddressOfGraphicsCursorCellLow                      ; D321= 85 D4       .T
                 rts                          ; D323= 60          `
 
-LD324:
+plotLineInitialiseDeltaValues:
                 ldy #$28                     ; D324= A0 28        (
                 ldx #$20                     ; D326= A2 20       "
 LD328:
@@ -8180,9 +8207,29 @@ LD70E:
 ;
 ; ***************************************************************************************
 osbyte135EntryPoint:
+; Taken from Beeb MOS, which start with MODE7 code and does other stuff if NOT mode 7
+.if version==100 && subVersion==7
+                ldy vduNumberOfLogicalColoursMinusOne              ; get number of logical colours for current MODE
+                bne nonMODE7ReadCharacter                          ; if (MODE is not 7) then branch
+                lda (vduWriteCursorScreenAddressLow),y             ; read MODE 7 character from screen
+                ldy #2                                              ; Y=2
+-
+                cmp teletextCharacterConversionTable + 1,y         ; compare with conversion table
+                bne +                                               ; if (not equal) then branch
+                lda teletextCharacterConversionTable,y             ; get previous byte from table
+                dey                                                 ; Y=Y-1
++
+                dey                                                 ; Y=Y-1
+                bpl -                                               ; if (+ve) then branch (loop back and do it again)
+                jmp finishUpFX135
+.endif
+nonMODE7ReadCharacter:
                 jsr swapSoftwareCursorAndScreenData                    ; D711= 20 DE D6     ^V
+
+; Label not used, but this is what this routne is called on the Beeb
+readCharacterDefinitionMaskFromScreen:
                 ldy #$07                     ; D714= A0 07        .
-LD716:
+setupPatternLoop:
                 sty vduTempStoreD8                      ; D716= 84 D8       .X
                 lda #$01                     ; D718= A9 01       ).
                 sta vduTempStoreD9                      ; D71A= 85 D9       .Y
@@ -8199,6 +8246,7 @@ LD727:
 LD72C:
                 rol vduTempStoreD9                      ; D72C= 26 D9       &Y
                 bcs LD73A                    ; D72E= B0 0A       0.
+
                 lsr $DA                      ; D730= 46 DA       FZ
                 bcc LD727                    ; D732= 90 F3       .s
                 tya                          ; D734= 98          .
@@ -8210,9 +8258,9 @@ LD73A:
                 lda vduTempStoreD9                      ; D73C= A5 D9       %Y
                 sta $0328,y                  ; D73E= 99 28 03    .(.
                 dey                          ; D741= 88          .
-                bpl LD716                    ; D742= 10 D2       .R
+                bpl setupPatternLoop                    ; D742= 10 D2       .R
                 ldx #$20                     ; D744= A2 20       "
-LD746:
+readCharLoop:
                 txa                          ; D746= 8A          .
                 pha                          ; D747= 48          H
                 jsr getCharacterDefinitionAddress                    ; D748= 20 4F CF     OO
@@ -8228,7 +8276,7 @@ LD74F:
                 bpl LD74F                    ; D757= 10 F6       .v
                 txa                          ; D759= 8A          .
                 cpx #$7F                     ; D75A= E0 7F       `.
-                bne LD76B                    ; D75C= D0 0D       P.
+                bne finishUpFX135                    ; D75C= D0 0D       P.
 LD75E:
                 inx                          ; D75E= E8          h
                 lda $DC                      ; D75F= A5 DC       %\
@@ -8237,8 +8285,8 @@ LD75E:
                 sta $DC                      ; D764= 85 DC       .\
                 bne LD74D                    ; D766= D0 E5       Pe
                 txa                          ; D768= 8A          .
-                bne LD746                    ; D769= D0 DB       P[
-LD76B:
+                bne readCharLoop                    ; D769= D0 DB       P[
+finishUpFX135:
                 jsr swapSoftwareCursorAndScreenData                    ; D76B= 20 DE D6     ^V
                 ldy vduCurrentScreenMODE                    ; D76E= AC 55 03    ,U.
                 tax                          ; D771= AA          *
@@ -8338,7 +8386,8 @@ LD7E2:
 LD7E4:
                 rts                          ; D7E4= 60          `
 
-LD7E5:
+; ***************************************************************************************
+splitIntoTwoCursors:
                 pha                          ; D7E5= 48          H
                 lda #$A0                     ; D7E6= A9 A0       )
                 ldx $026A                    ; D7E8= AE 6A 02    .j.
@@ -8355,17 +8404,19 @@ LD7E5:
                 jsr LC523                    ; D802= 20 23 C5     #E
                 asl vduLastCursorStartRegisterValue                    ; D805= 0E 5F 03    ._.
 LD808:
-                lda #$BF                     ; D808= A9 BF       )?
+                lda #%10111111                     ; D808= A9 BF       )?
                 jsr clearVDUStatusByteFlags                    ; D80A= 20 30 C5     0E
                 pla                          ; D80D= 68          h
-                and #$7F                     ; D80E= 29 7F       ).
+                and #%01111111                     ; D80E= 29 7F       ).
                 jsr vduChrEntryPoint         ; D810= 20 33 C4     3D
-                lda #$40                     ; D813= A9 40       )@
+                lda #%01000000                     ; D813= A9 40       )@
+                ; This sub-routine and  isn't used on the Beeb...
                 jsr LC523                    ; D815= 20 23 C5     #E
                 jmp swapSoftwareCursorAndScreenData                    ; D818= 4C DE D6    L^V
 
-LD81B:
-                lda #$20                     ; D81B= A9 20       )
+; ***************************************************************************************
+readCharacterFromScreenAndCursorRight:
+                lda #%00100000                     ; D81B= A9 20       )
                 bit vduStatusByte                      ; D81D= 24 D0       $P
                 bvc LD7E2                    ; D81F= 50 C1       PA
                 bne LD7E2                    ; D821= D0 BF       P?
@@ -8441,7 +8492,7 @@ defaultVectorTable:
                 .word rtsFFA2                ; vectorNETV=$224 
                 .word rtsFFA2                ; vectorVDUV=$226 
                 .word keyEntryPoint          ; vectorKEYV=$228 
-                .word LE221                  ; vectorINSV=$22a 
+                .word insEntryPoint                  ; vectorINSV=$22a 
                 .word LE1D2                  ; vectorREMV=$22c 
                 .word LDF41                  ; vectorCNPV=$22e 
                 .word rtsFFA2                ; vectorIND1V=$230
@@ -8618,11 +8669,11 @@ LD92A:
                 inc lastResetType                    ; D92A= EE 8D 02    n..
 ; TODO: THIS IF BLOCK SHOULD BE REMOVED ** 
 ; JUST FOR TESTING PURPOSES TO MAKE IT EASIER TO FIX MODE6 ISSUES!!
-.if version==100 && subVersion==7
-                lda #$FE                    ; TODO: TO BE REMOVED, IT SETS MODE 6 
-.else                
+; .if version==100 && subVersion==7
+;                 lda #$FE                    ; TODO: TO BE REMOVED, IT SETS MODE 6 
+; .else                
                 lda #$FF                     ; D92D= A9 FF       ).
-.endif
+; .endif
                 sta startUpOptions                    ; D92F= 8D 8F 02    ...
                 ldx #$90                     ; D932= A2 90       ".
 LD934:
@@ -8761,7 +8812,7 @@ LD9E0:
                 lda startUpOptions           ; Get startup options
                 jsr initialiseScreenOnReset  ; Use it to select screen mode
                 ldy #$CA                     ; Enter f10 into keyboard buffer
-                jsr LE25F
+                jsr insertByteIntoKeyboardBuffer
                 jsr LE87B                    ; Check Break Intercept Vector
                 jsr LF08B                    ; Set up casette options
                 lda #$81                     ; Write &81 to Tube control
@@ -9082,7 +9133,7 @@ LDBB0:
                 jsr LC8A3
 LDBBB:
                 ldy #$04
-                jsr LE202
+                jsr eventEntryPoint
                 dec verticalSyncCounter
                 ldy #$10                     ; Y=clear Display End IRQ value
 LDBC5:
@@ -9111,7 +9162,7 @@ LDBE5:
                 dex
                 bne LDBE5
                 ldy #$05
-                jsr LE202
+                jsr eventEntryPoint
 LDBF2:
                 lda $02B0
                 bne LDBFF
@@ -9940,7 +9991,7 @@ LE1D2:
                 sei                          ; E1D3= 78          x
                 lda $02CC,x                  ; E1D4= BD CC 02    =L.
                 cmp $02D5,x                  ; E1D7= DD D5 02    ]U.
-                beq LE24E                    ; E1DA= F0 72       pr
+                beq pullSetCarryAndExit                    ; E1DA= F0 72       pr
                 tay                          ; E1DC= A8          (
                 jsr LE1BE                    ; E1DD= 20 BE E1     >a
                 lda ($FA),y                  ; E1E0= B1 FA       1z
@@ -9957,7 +10008,7 @@ LE1EC:
                 cmp $02D5,x                  ; E1F3= DD D5 02    ]U.
                 bne LE1FD                    ; E1F6= D0 05       P.
                 ldy #$00                     ; E1F8= A0 00        .
-                jsr LE202                    ; E1FA= 20 02 E2     .b
+                jsr eventEntryPoint                    ; E1FA= 20 02 E2     .b
 LE1FD:
                 pla                          ; E1FD= 68          h
 LE1FE:
@@ -9966,13 +10017,51 @@ LE1FE:
                 clc                          ; E200= 18          .
                 rts                          ; E201= 60          `
 
-LE202:
+; ***************************************************************************************
+;
+; Trigger an event
+;
+; Events
+;
+; Events are a slightly simpler way for users to use an interrupt. Events are disabled by
+; default, but can be enabled via OSBYTE 14 (see .osbyte14EntryPoint). Different event types
+; can be individually enabled or disabled. For the list of different event types,
+; see .eventOutputBufferBecomesEmpty.
+;
+; Most events are generated from the default IRQ handling code. When a relevant interrupt
+; happens .eventEntryPoint is called with the event type. If enabled, this calls the EVNTV
+; vector with the event type in the accumulator. The default implementation of the EVNTV
+; vector does nothing, but the user can intercept this vector and do their own processing.
+;
+; This provides a simpler (and more limited) interface to handling interrupts than
+; intercepting the IRQ1 or IRQ2 vectors directly. Events can't override the default interrupt
+; handling, but are executed in addition.
+;
+; As with regular interrupt code, event handling code must not enable interrupts, and should
+; be brief (The Acorn User Guide suggests "one millisecond maximum", 2000 clock cycles,
+; whereas the New Advanced User Guide suggests it should "not last for more than about 2ms").
+;
+; The user can generate their own events by calling .OSEVEN with A=9 (.eventUserEvent)
+;
+; (See NAUG Section 7, Page 119)
+;
+; On Entry:
+;       A = parameter to pass into EVENV vector in Y
+;       X = parameter to pass into EVENV vector in X
+;       Y = event type
+; On Exit:
+;       A is preserved.
+;       Flags are preserved except for carry:
+;       Carry clear indicates the event was called successfully because it was enabled.
+;
+; ***************************************************************************************
+eventEntryPoint:
                 php                          ; E202= 08          .
                 sei                          ; E203= 78          x
                 pha                          ; E204= 48          H
                 sta $FA                      ; E205= 85 FA       .z
                 lda $02B5,y                  ; E207= B9 B5 02    95.
-                beq LE24D                    ; E20A= F0 41       pA
+                beq pullTwiceSetCarryAndExit                    ; E20A= F0 41       pA
                 tya                          ; E20C= 98          .
                 ldy $FA                      ; E20D= A4 FA       $z
                 jsr callEVENTV                    ; E20F= 20 E2 E7     bg
@@ -9982,17 +10071,42 @@ LE212:
                 clc                          ; E214= 18          .
                 rts                          ; E215= 60          `
 
-LE216:
+; ***************************************************************************************
+generateEventAndPutByteIntoBuffer:
                 tya                          ; E216= 98          .
                 ldy #$02                     ; E217= A0 02        .
-                jsr LE202                    ; E219= 20 02 E2     .b
+                jsr eventEntryPoint                    ; E219= 20 02 E2     .b
                 tay                          ; E21C= A8          (
+    ; fall through...
+
+; ***************************************************************************************
+;
+; OSBYTE 138 - Put byte into buffer
+;
+; On Entry:
+;       X is buffer number
+;       Y is character to be written
+;
+; ***************************************************************************************
 osbyte8A:
                 tya                          ; E21D= 98          .
 callINSV:
                 jmp (vectorINSV)                  ; E21E= 6C 2A 02    l*.
 
-LE221:
+; ***************************************************************************************
+;
+; INSV - insert value into buffer - default handler
+;
+; On Entry:
+;       A is value to write
+;       X is buffer number
+; On Exit:
+;       A preserved
+;       X preserved
+;       C clear on success
+;
+; ***************************************************************************************
+insEntryPoint:
                 php                          ; E221= 08          .
                 sei                          ; E222= 78          x
                 pha                          ; E223= 48          H
@@ -10003,7 +10117,7 @@ LE221:
 LE22D:
                 tya                          ; E22D= 98          .
                 cmp $02CC,x                  ; E22E= DD CC 02    ]L.
-                beq LE242                    ; E231= F0 0F       p.
+                beq insertIntoFullBuffer                    ; E231= F0 0F       p.
                 ldy $02D5,x                  ; E233= BC D5 02    <U.
                 sta $02D5,x                  ; E236= 9D D5 02    .U.
                 jsr LE1BE                    ; E239= 20 BE E1     >a
@@ -10013,16 +10127,16 @@ LE22D:
                 clc                          ; E240= 18          .
                 rts                          ; E241= 60          `
 
-LE242:
+insertIntoFullBuffer:
                 pla                          ; E242= 68          h
                 cpx #$02                     ; E243= E0 02       `.
-                bcs LE24E                    ; E245= B0 07       0.
+                bcs pullSetCarryAndExit                    ; E245= B0 07       0.
                 ldy #$01                     ; E247= A0 01        .
-                jsr LE202                    ; E249= 20 02 E2     .b
+                jsr eventEntryPoint                    ; E249= 20 02 E2     .b
                 pha                          ; E24C= 48          H
-LE24D:
+pullTwiceSetCarryAndExit:
                 pla                          ; E24D= 68          h
-LE24E:
+pullSetCarryAndExit:
                 plp                          ; E24E= 28          (
                 sec                          ; E24F= 38          8
                 rts                          ; E250= 60          `
@@ -10031,25 +10145,41 @@ LE24E:
                 .include "readLetterFromString.s65"
 .endif
 
-LE25F:
+insertByteIntoKeyboardBuffer:
                 ldx #$00                     ; E25F= A2 00       ".
-osbyte99:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; OSBYTE 153 - Put byte in input buffer
+;
+; On Entry:
+;       X is buffer number:
+;           1 is RS-423 input
+;           0 is Keyboard
+;       Y is character to be written
+;
+; On Exit:
+;       Carry clear
+;
+; ***************************************************************************************
+osbyte153EntryPoint:
                 txa                          ; E261= 8A          .
                 and $0245                    ; E262= 2D 45 02    -E.
                 bne osbyte8A                    ; E265= D0 B6       P6
                 tya                          ; E267= 98          .
                 eor $026C                    ; E268= 4D 6C 02    Ml.
                 ora $0275                    ; E26B= 0D 75 02    .u.
-                bne LE216                    ; E26E= D0 A6       P&
+                bne generateEventAndPutByteIntoBuffer                    ; E26E= D0 A6       P&
                 lda escapeAndBreakEffect                    ; E270= AD 58 02    -X.
                 ror a                        ; E273= 6A          j
                 tya                          ; E274= 98          .
-                bcs LE281                    ; E275= B0 0A       0.
+                bcs exitWithCarryClear2                    ; E275= B0 0A       0.
                 ldy #$06                     ; E277= A0 06        .
-                jsr LE202                    ; E279= 20 02 E2     .b
-                bcc LE281                    ; E27C= 90 03       ..
+                jsr eventEntryPoint                    ; E279= 20 02 E2     .b
+                bcc exitWithCarryClear2                    ; E27C= 90 03       ..
                 jsr osbyte7D                    ; E27E= 20 80 E4     .d
-LE281:
+exitWithCarryClear2:
                 clc                          ; E281= 18          .
                 rts                          ; E282= 60          `
 
@@ -10063,7 +10193,7 @@ LE28C:
 LE28F:
                 beq LE2B2
                 lsr a
-                bne LE2C5
+                bne handleFunctionKeyPress
                 lda $F4
                 pha
                 lda $028C
@@ -10087,11 +10217,28 @@ LE2B5:
                 lda firmKeyLengths-$90,y                  ; E2BB= B9 A9 EE    9)n
                 tay                          ; E2BE= A8          (
                 bcs LE2AB                    ; E2BF= B0 EA       0j
-LE2C1:
+
+; ***************************************************************************************
+;
+; Handle cursor, COPY and soft keys for non-zero cursor editing type
+;
+; On Entry:
+;       A = cursor editing type
+;           1 = return $87 - $8B (codes for COPY, LEFT, RIGHT, DOWN, UP)
+;           2 = use cursor keys as soft keys 11-15
+;
+; ***************************************************************************************
+handleCursorKeysAndCOPY:
                 ror a                        ; E2C1= 6A          j
+    ; carry is set means cursor keys return codes $87-$8B
+    ; carry  clear means cursor keys and COPY key are soft keys 11=COPY,12=LEFT,13=RIGHT,
+    ;                                                           14=DOWN,15=UP
+
                 pla                          ; E2C2= 68          h
-                bcs LE281                    ; E2C3= B0 BC       0<
-LE2C5:
+                bcs exitWithCarryClear2                    ; E2C3= B0 BC       0<
+
+; cursor keys are 'soft'
+handleFunctionKeyPress:
                 tya                          ; E2C5= 98          .
                 pha                          ; E2C6= 48          H
                 lsr a                        ; E2C7= 4A          J
@@ -10102,20 +10249,29 @@ LE2C5:
                 tay                          ; E2CD= A8          (
                 lda $0265,y                  ; E2CE= B9 65 02    9e.
                 cmp #$01                     ; E2D1= C9 01       I.
-                beq LE353                    ; E2D3= F0 7E       p~
+                beq expandSoftKey                    ; E2D3= F0 7E       p~
                 pla                          ; E2D5= 68          h
-                bcc LE2E5                    ; E2D6= 90 0D       ..
+                bcc readFromInputBufferX                    ; E2D6= 90 0D       ..
                 and #$0F                     ; E2D8= 29 0F       ).
                 clc                          ; E2DA= 18          .
                 adc $0265,y                  ; E2DB= 79 65 02    ye.
                 clc                          ; E2DE= 18          .
                 rts                          ; E2DF= 60          `
 
-LE2E0:
+; ***************************************************************************************
+errorOnReadingCharacterFromScreen:
                 jsr vdu7EntryPoint                    ; E2E0= 20 4B E6     Kf
                 pla                          ; E2E3= 68          h
                 tax                          ; E2E4= AA          *
-LE2E5:
+    ; fall through...
+
+; ***************************************************************************************
+;
+; Read from input buffer X (0 = keyboard; 1 = RS-423)
+; Note: This is different to the BBC MOS version, probably as RS-423 isn't standard
+;
+; ***************************************************************************************
+readFromInputBufferX:
                 jsr osbyte91                    ; E2E5= 20 CE E1     Na
                 bcs LE350                    ; E2E8= B0 66       0f
                 cpx #$01                     ; E2EA= E0 01       `.
@@ -10132,23 +10288,23 @@ LE2F3:
 LE2FE:
                 and #$0F                     ; E2FE= 29 0F       ).
                 cmp #$0B                     ; E300= C9 0B       I.
-                bcc LE2C5                    ; E302= 90 C1       .A
+                bcc handleFunctionKeyPress                    ; E302= 90 C1       .A
                 adc #$7B                     ; E304= 69 7B       i{
                 pha                          ; E306= 48          H
                 lda $027D                    ; E307= AD 7D 02    -}.
-                bne LE2C1                    ; E30A= D0 B5       P5
+                bne handleCursorKeysAndCOPY                    ; E30A= D0 B5       P5
                 lda $027C                    ; E30C= AD 7C 02    -|.
                 ror a                        ; E30F= 6A          j
                 ror a                        ; E310= 6A          j
                 pla                          ; E311= 68          h
-                bcs LE2E5                    ; E312= B0 D1       0Q
+                bcs readFromInputBufferX                    ; E312= B0 D1       0Q
                 cmp #$87                     ; E314= C9 87       I.
                 bne LE325                    ; E316= D0 0D       P.
                 txa                          ; E318= 8A          .
                 pha                          ; E319= 48          H
-                jsr LD81B                    ; E31A= 20 1B D8     .X
+                jsr readCharacterFromScreenAndCursorRight                    ; E31A= 20 1B D8     .X
                 tay                          ; E31D= A8          (
-                beq LE2E0                    ; E31E= F0 C0       p@
+                beq errorOnReadingCharacterFromScreen                    ; E31E= F0 C0       p@
                 pla                          ; E320= 68          h
                 tax                          ; E321= AA          *
                 tya                          ; E322= 98          .
@@ -10160,7 +10316,7 @@ LE325:
                 txa                          ; E326= 8A          .
                 pha                          ; E327= 48          H
                 tya                          ; E328= 98          .
-                jsr LD7E5                    ; E329= 20 E5 D7     eW
+                jsr splitIntoTwoCursors                    ; E329= 20 E5 D7     eW
                 pla                          ; E32C= 68          h
                 tax                          ; E32D= AA          *
 LE32E:
@@ -10169,11 +10325,11 @@ LE32E:
 LE333:
                 txa                          ; E333= 8A          .
                 and $0245                    ; E334= 2D 45 02    -E.
-                bne LE2E5                    ; E337= D0 AC       P,
+                bne readFromInputBufferX                    ; E337= D0 AC       P,
                 lda firmKeyLength                    ; E339= AD 5D 02    -].
                 bne LE365                    ; E33C= D0 27       P'
                 lda $0268                    ; E33E= AD 68 02    -h.
-                beq LE2E5                    ; E341= F0 A2       p"
+                beq readFromInputBufferX                    ; E341= F0 A2       p"
                 ldy $0279                    ; E343= AC 79 02    ,y.
                 lda $0B01,y                  ; E346= B9 01 0B    9..
                 inc $0279                    ; E349= EE 79 02    ny.
@@ -10184,7 +10340,15 @@ LE350:
                 bcs LE398                    ; E350= B0 46       0F
                 rts                          ; E352= 60          `
 
-LE353:
+; ***************************************************************************************
+;
+; Expand Soft Key (*KEY expansion)
+;
+; On Entry:
+;       Y=pointer to string number
+;
+; ***************************************************************************************
+expandSoftKey:
                 pla                          ; E353= 68          h
                 and #$0F                     ; E354= 29 0F       ).
                 tay                          ; E356= A8          (
@@ -10318,7 +10482,7 @@ LE3B1:
                 .word osbyte96 ; &96 - Read from SHEILA (&FE00 – &FEFF) [MasRef D.2-45]         
                 .word osbyte97 ; &97 - Write to SHEILA (&FE00 – &FEFF) [MasRef D.2-45]          
                 .word osbyte98 ; &98 - Examine buffer status [MasRef D.2-45]                    
-                .word osbyte99 ; &99 - Insert character code into buffer [MasRef D.2-46]        
+                .word osbyte153EntryPoint ; &99 - Insert character code into buffer [MasRef D.2-46]        
                 .word osbyte9A ; &9A - Write video ULA control register [MasRef D.2-46]         
                 .word rtsFFA2 ; &9B - Write to video ULA palette register and [MasRef D.2-47]  
                 .word osbyteUnused ; &9C - Read/write serial ACIA control [MasRef D.2-47]           
@@ -11737,7 +11901,7 @@ LEBD1:
                 jsr LED34                    ; Disable keyboard
                 lda $0259                    ; If keyboard locked, skip
                 bne LEBDD
-                jsr LE25F                    ; Insert into keyboard buffer
+                jsr insertByteIntoKeyboardBuffer                    ; Insert into keyboard buffer
 LEBDD:
                 ldx $ED                      ; EBDD= A6 ED       &m
                 beq LEBEC                    ; EBDF= F0 0B       p.
@@ -14946,7 +15110,7 @@ OSRDRM:                                      ; FFB9
                 jmp LDAF2
                 jmp LD6D8                    ; FFBC
 OSEVEN:
-                jmp LE202                    ; FFBF
+                jmp eventEntryPoint                    ; FFBF
 GSINIT:
                 jmp LE7FD                    ; FFC2
 GSREAD:
