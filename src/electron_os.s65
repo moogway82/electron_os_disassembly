@@ -8667,13 +8667,13 @@ LD912:
                 inc lastResetType                    ; D927= EE 8D 02    n..
 LD92A:
                 inc lastResetType                    ; D92A= EE 8D 02    n..
-; TODO: THIS IF BLOCK SHOULD BE REMOVED ** 
-; JUST FOR TESTING PURPOSES TO MAKE IT EASIER TO FIX MODE6 ISSUES!!
-; .if version==100 && subVersion==7
-;                 lda #$FE                    ; TODO: TO BE REMOVED, IT SETS MODE 6 
-; .else                
+; This was just for testing purposes, but...
+; Without starting in Mode 6, the cursor stops flashing so I think it SHOULD start in Mode 6...
+.if version==100 && subVersion==7
+                lda #$FE                     ; SETS MODE 6 
+.else                
                 lda #$FF                     ; D92D= A9 FF       ).
-; .endif
+.endif
                 sta startUpOptions                    ; D92F= 8D 8F 02    ...
                 ldx #$90                     ; D932= A2 90       ".
 LD934:
