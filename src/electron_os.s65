@@ -4268,8 +4268,8 @@ readVDUEntryPointAddressAndParameters:
 ;
 ; ***************************************************************************************
 vdu0EntryPoint:
-vdu6EntryPoint
-vdu27EntryPoint
+vdu6EntryPoint:
+vdu27EntryPoint:
                 rts
 
 vduParametersAreOutstanding:
@@ -12802,7 +12802,11 @@ firmKeyLengths:
                 
 firmKeyExpansions: .block
 key90: .firmKeyExpansion "AUTO"
+.if version==100 && subVersion==7
+key91: .firmKeyExpansion "" ; RENUMBER
+.else
 key91: .firmKeyExpansion "RENUMBER"
+.endif
 key92: .firmKeyExpansion "COLOUR"
 key93: .firmKeyExpansion "DRAW"
 key94: .firmKeyExpansion "ELSE"
@@ -12817,15 +12821,25 @@ key9C: .firmKeyExpansion "MODE"
 key9D: .firmKeyExpansion "NEXT"
 key9E: .firmKeyExpansion ("OLD",13)
 key9F: .firmKeyExpansion "PLOT"
-keyA0: .firmKeyExpansion "LOCAL"
+.if version==100 && subVersion==7
+keyA0: .firmKeyExpansion "" ;LOCAL
+.else
+keyA0: .firmKeyExpansion "LOCAL" ;
+.endif
 keyA1: .firmKeyExpansion ("RUN",13)
 keyA2: .firmKeyExpansion "STEP"
 keyA3: .firmKeyExpansion "THEN"
 keyA4: .firmKeyExpansion "UNTIL"
 keyA5: .firmKeyExpansion "VDU"
+.if version==100 && subVersion==7
+keyA6: .firmKeyExpansion "" ;RESTORE
+keyA7: .firmKeyExpansion "" ;PROC
+keyA8: .firmKeyExpansion "" ;REPEAT
+.else
 keyA6: .firmKeyExpansion "RESTORE"
-keyA7: .firmKeyExpansion "PROC"
+keyA7: .firmKeyExpansion "PROC" 
 keyA8: .firmKeyExpansion "REPEAT"
+.endif
 keyA9: .firmKeyExpansion "END"
 keyAC: .firmKeyExpansion "LOAD"
 keyAE: .firmKeyExpansion "SAVE"
