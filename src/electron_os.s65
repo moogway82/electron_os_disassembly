@@ -4178,7 +4178,7 @@ LC427:
 
 ; Electron Acorn bitmap for Ctrl-Break
 ; ------------------------------------
-LC42B:
+acornBitmap:
                 .byte %00011000
                 .byte %00111100
                 .byte %00111100
@@ -4188,6 +4188,10 @@ LC42B:
                 .byte %01111110
                 .byte %00111100
 
+.if version==100 && subVersion==7
+messageMode7:
+                .text "MODE7",0
+.endif
 .if version==300
 message64K:
                 .text '64K',0
@@ -6502,9 +6506,9 @@ LCEC4:
 ; Copy Electron 'acorn' to soft cursor store
 ; ------------------------------------------
 LCED5:
-                ldx #<LC42B                  ; &DC/D=>'acorn' bitmap
+                ldx #<acornBitmap                  ; &DC/D=>'acorn' bitmap
                 stx $DC
-                ldx #>LC42B
+                ldx #>acornBitmap
                 stx $DD
                 bne displayACharacterAtAddress
 
@@ -8852,6 +8856,12 @@ LDA16:
                 lda #$07                     ; Beep
                 jsr OSWRCH
 
+.if version==100 && subVersion==7
+                ldy #<messageMode7-1
+                lda #>messageMode7
+                jsr LDC36
+                ;beq LDA4D
+.endif
 .if version==300
                 ldy #<message64K-1
                 lda $027f
@@ -10857,8 +10867,12 @@ osbyte00:
                 .byte $F7
 .if version==300
                 .text "OS 3.00"
-.else
-                .text "OS 1.00"
+.else 
+    .if version==100 && subVersion==7
+                    .text "OS 1.07"
+    .else
+                    .text "OS 1.00"
+    .endif
 .endif
                 brk
 
@@ -12804,10 +12818,11 @@ firmKeyExpansions: .block
 key90: .firmKeyExpansion "AUTO"
 .if version==100 && subVersion==7
 key91: .firmKeyExpansion "" ; RENUMBER
+key92: .firmKeyExpansion "" ;COLOUR
 .else
 key91: .firmKeyExpansion "RENUMBER"
-.endif
 key92: .firmKeyExpansion "COLOUR"
+.endif
 key93: .firmKeyExpansion "DRAW"
 key94: .firmKeyExpansion "ELSE"
 key95: .firmKeyExpansion "FOR"
