@@ -5241,7 +5241,7 @@ vdu23Parameter9 = vduQueueEndByte
 vdu23EntryPoint:
                 lda vdu23ParameterLogicalColour                    ; C8F2= AD 1B 03    -..
                 cmp #$20                     ; C8F5= C9 20       I
-                bcc LC93E                    ; C8F7= 90 45       .E
+                bcc vdu23SetCRTCRegisterOrCursorVisibility                    ; C8F7= 90 45       .E
                 pha                          ; C8F9= 48          H
                 lsr a                        ; C8FA= 4A          J
                 lsr a                        ; C8FB= 4A          J
@@ -5300,7 +5300,16 @@ vduPlotExtension:
 callVDUV:
                 jmp (vectorVDUV)
 
-LC93E:
+; ***************************************************************************************
+;
+; VDU 23 with 0-31 as the next byte
+;
+; VDU 23,0      - set CRTC Register
+; VDU 23,1      - turn cursor on or off
+; VDU 23,2-31   - call VDUV extension vector
+;
+; ***************************************************************************************
+vdu23SetCRTCRegisterOrCursorVisibility:
                 cmp #$01                     ; C93E= C9 01       I.
                 beq LC96B                    ; C940= F0 29       p)
                 bcs callVDUV                    ; C942= B0 F7       0w
@@ -8400,6 +8409,7 @@ splitIntoTwoCursors:
                 bne LD832                    ; D7EF= D0 41       PA
                 jsr swapSoftwareCursorAndScreenData                    ; D7F1= 20 DE D6     ^V
                 bvs LD808                    ; D7F4= 70 12       p.
+
                 ldx #$18                     ; D7F6= A2 18       ".
                 ldy #$64                     ; D7F8= A0 64        d
                 jsr copyTwoBytesWithinVDUVariables                    ; D7FA= 20 99 D3     .S
