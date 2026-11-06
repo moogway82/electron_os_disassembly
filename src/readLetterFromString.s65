@@ -1,12 +1,24 @@
+; ***************************************************************************************
+;
+; Check for a letter (A-Z or a-z)
+;
+; On Entry:
+;       A = character to check
+; On Exit:
+;       Preserves A
+;       Carry clear if character is an upper or lower case letter (A-Z or a-z)
+;       otherwise carry set
+;
+; ***************************************************************************************
 readLetterFromString:
                 pha
                 and #$DF
                 cmp #'A'        ; taken if not letter
-                bcc LE25C
+                bcc noLetter
                 cmp #'Z'+1
-                bcc LE25D       ; taken if letter
-LE25C:
+                bcc yesLetter       ; taken if letter
+noLetter:
                 sec
-LE25D:
+yesLetter:
                 pla
                 rts

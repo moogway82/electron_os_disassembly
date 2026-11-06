@@ -109,7 +109,7 @@ LDDAA:
                 jsr LDD96                    ; DDB5= 20 96 DD     .]
                 lda #fscUnknownCommand
 callFSCV:
-                jmp (FSCV)                  ; DDBA= 6C 1E 02    l..
+                jmp (vectorFSCV)                  ; DDBA= 6C 1E 02    l..
 
 osbyte8B:
                 asl a                        ; DDBD= 0A          .
